@@ -390,27 +390,45 @@
       );
     }
 
-    // Active project card — always from local store (not changed)
+    // Active projects card — fetch fresh data from backend, then render all active projects
+    try {
+      // Ensure projects are loaded; fetchProjects may already be cached but calling it
+      // here guarantees the dashboard always shows up-to-date data on every page load.
+      await FlowsyncStore.fetchProjects();
+    } catch (_) { /* non-fatal — fall through to render whatever is cached */ }
+
     const activeProjects = FlowsyncStore.getProjects().filter(p => p.status === 'active');
-    const proj = activeProjects[0];
-    if (proj) {
-      const ps = FlowsyncStore.getStats(proj.id);
-      el('dashProjectBody').innerHTML = `
-        <div style="font-size:16px;font-weight:700;color:var(--white);margin-bottom:6px;">${escHtml(proj.name)}</div>
-        <div style="font-size:13px;color:var(--text-sub);margin-bottom:16px;">${escHtml(proj.description)}</div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-sub);margin-bottom:6px;">
-          <span>Progress</span><span>${ps.pct}%</span>
-        </div>
-        <div class="project-progress-bar"><div class="project-progress-fill" style="width:${ps.pct}%"></div></div>
-        <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:var(--text-sub);">📋 ${ps.total} tasks</span>
-          <span style="font-size:12px;color:var(--green);">✓ ${ps.done} done</span>
-          <span style="font-size:12px;color:var(--amber);">⏳ ${ps.inprog} in progress</span>
-          <span style="font-size:12px;color:var(--text-sub);">📅 Due ${fmtDate(proj.deadline)}</span>
-        </div>
-      `;
-    } else {
+
+    if (!activeProjects.length) {
       el('dashProjectBody').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📁</div><h3>No active projects</h3><p>Create a project to get started.</p></div>';
+    } else {
+      // Fetch tasks for every active project in parallel so getStats() has real data
+      await Promise.all(
+        activeProjects.map(p =>
+          FlowsyncStore.fetchTasks(p.id).catch(() => { /* ignore per-project failures */ })
+        )
+      );
+
+      const items = activeProjects.map((proj, idx) => {
+        const ps = FlowsyncStore.getStats(proj.id);
+        const isLast = idx === activeProjects.length - 1;
+        return `
+          <div style="margin-bottom:${isLast ? '0' : '20px'};padding-bottom:${isLast ? '0' : '20px'};${isLast ? '' : 'border-bottom:1px solid var(--border);'}">
+            <div style="font-size:16px;font-weight:700;color:var(--white);margin-bottom:6px;">${escHtml(proj.name)}</div>
+            <div style="font-size:13px;color:var(--text-sub);margin-bottom:16px;">${escHtml(proj.description || '')}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-sub);margin-bottom:6px;">
+              <span>Progress</span><span>${ps.pct}%</span>
+            </div>
+            <div class="project-progress-bar"><div class="project-progress-fill" style="width:${ps.pct}%"></div></div>
+            <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
+              <span style="font-size:12px;color:var(--text-sub);">📋 ${ps.total} tasks</span>
+              <span style="font-size:12px;color:var(--green);">✓ ${ps.done} done</span>
+              <span style="font-size:12px;color:var(--amber);">⏳ ${ps.inprog} in progress</span>
+              <span style="font-size:12px;color:var(--text-sub);">📅 Due ${fmtDate(proj.deadline)}</span>
+            </div>
+          </div>`;
+      });
+      el('dashProjectBody').innerHTML = items.join('');
     }
 
     // Mini kanban — always from local store (not changed)

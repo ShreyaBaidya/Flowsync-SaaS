@@ -1,5 +1,5 @@
 /* ============================================================
-   TASKLUNE — Auth Pages JavaScript
+   Flowsync — Auth Pages JavaScript
    ============================================================ */
 
 (function () {
@@ -307,7 +307,7 @@
           if (payload.accessToken) {
             FlowsyncAuth.setToken(payload.accessToken);
           }
-          showToast('Account created! Welcome to TaskLune.', 'success');
+          showToast('Account created! Welcome to Flowsync.', 'success');
           setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
         })
         .catch((err) => {

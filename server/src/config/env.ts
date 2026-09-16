@@ -44,7 +44,18 @@ const envSchema = z.object({
 
   CLIENT_URL: z
     .string({ required_error: 'CLIENT_URL is required' })
-    .url('CLIENT_URL must be a valid URL'),
+    .min(1, 'CLIENT_URL cannot be empty')
+    .refine(
+      (v) =>
+        v
+          .split(',')
+          .map((u) => u.trim())
+          .filter(Boolean)
+          .every((u) => {
+            try { new URL(u); return true; } catch { return false; }
+          }),
+      { message: 'CLIENT_URL must be a valid URL or a comma-separated list of valid URLs' },
+    ),
 
   COOKIE_SECURE: z
     .string()
