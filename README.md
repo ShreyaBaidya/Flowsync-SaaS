@@ -1,6 +1,6 @@
-# 🚀 FlowSync – Full-Stack SaaS Project Management Platform
+# 🚀 Flowsync – Full-Stack SaaS Project Management Platform
 
-FlowSync is a modern **full-stack SaaS project management platform** built with **HTML, CSS, JavaScript, TypeScript, Node.js, Express.js, and MongoDB**.
+Flowsync is a modern **full-stack SaaS project management platform** built with **HTML, CSS, JavaScript, TypeScript, Node.js, Express.js, and MongoDB**.
 
 It enables individuals and teams to securely organize projects, manage tasks, collaborate, and monitor progress through an intuitive dashboard using **JWT Authentication**, **Refresh Token Rotation**, and a RESTful backend.
 
