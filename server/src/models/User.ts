@@ -1,31 +1,45 @@
-import { Schema, model, Document, Model, Types } from 'mongoose';
-import bcrypt from 'bcryptjs';
-import type { SafeUser, UserRole, UserPlan } from '../types/user.types';
+/**
+ * User.ts
+ * Mongoose model for CoTaskio users.
+ *
+ * Security notes:
+ *  - password is excluded from all query results by default (select: false)
+ *  - comparePassword is an instance method — never expose the hash to callers
+ *  - toSafeObject strips all sensitive fields before sending to clients
+ *
+ * Database compatibility note:
+ *  - The password hash is stored under the field name 'password' in MongoDB,
+ *    matching the field name written by the previous backend implementation.
+ *    This avoids a database migration while switching backends.
+ */
 
-// ── Document interface ────────────────────────────────────────
+import { Schema, model, Document, Model } from 'mongoose';
+import bcrypt from 'bcryptjs';
+import { env } from '../config/env';
+import { UserPlan, SafeUser } from '../types/auth.types';
+
+// ── Document interface ───────────────────────────────────────
 
 export interface IUser extends Document {
-  _id:             Types.ObjectId;
   name:            string;
   email:           string;
-  password:        string;
-  avatar:          string | null;
-  role:            UserRole;
+  password:        string;    // stored as 'password' in MongoDB
   plan:            UserPlan;
-  isEmailVerified: boolean;
+  trialStartedAt?: Date;
   createdAt:       Date;
   updatedAt:       Date;
 
+  // Instance methods
   comparePassword(candidate: string): Promise<boolean>;
   toSafeObject(): SafeUser;
+  getInitials(): string;
 }
 
-// ── Model interface ───────────────────────────────────────────
-
+// ── Model interface (for static methods if needed later) ─────
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface IUserModel extends Model<IUser> {}
 
-// ── Schema ────────────────────────────────────────────────────
+// ── Schema ───────────────────────────────────────────────────
 
 const userSchema = new Schema<IUser, IUserModel>(
   {
@@ -36,7 +50,6 @@ const userSchema = new Schema<IUser, IUserModel>(
       minlength: [2,  'Name must be at least 2 characters'],
       maxlength: [80, 'Name must be at most 80 characters'],
     },
-
     email: {
       type:      String,
       required:  [true, 'Email is required'],
@@ -48,62 +61,56 @@ const userSchema = new Schema<IUser, IUserModel>(
         'Please provide a valid email address',
       ],
     },
-
     password: {
       type:     String,
       required: [true, 'Password is required'],
-      select:   false, // never returned in queries unless explicitly requested
+      select:   false,   // ← Never returned in queries unless explicitly requested
     },
-
-    avatar: {
-      type:    String,
-      default: null,
-      trim:    true,
-    },
-
-    role: {
-      type:    String,
-      enum:    ['user', 'admin'] satisfies UserRole[],
-      default: 'user',
-    },
-
     plan: {
       type:    String,
-      enum:    ['starter', 'pro'] satisfies UserPlan[],
+      enum:    ['starter', 'pro_trial', 'pro', 'enterprise'],
       default: 'starter',
     },
-
-    isEmailVerified: {
-      type:    Boolean,
-      default: false,
+    trialStartedAt: {
+      type: Date,
     },
   },
   {
-    timestamps: true,
+    timestamps: true,      // Adds createdAt + updatedAt
     versionKey: false,
   },
 );
 
 // ── Indexes ───────────────────────────────────────────────────
+// email already indexed via unique:true
+// Add compound or additional indexes here as the schema grows
 
-// email is already indexed via unique: true
-// Composite index for common admin queries (filter by role + plan)
-userSchema.index({ role: 1, plan: 1 });
+// ── Hooks ────────────────────────────────────────────────────
 
-// ── Pre-save hook — hash password ─────────────────────────────
-
+/**
+ * Hash the plain-text password before save.
+ * Only runs when the password field is new or modified.
+ * Callers set `user.password = plainTextPassword` before save,
+ * and the hook replaces it with the bcrypt hash.
+ */
 userSchema.pre<IUser>('save', async function (next) {
-  // Only hash when the password field has been set or changed
   if (!this.isModified('password')) return next();
 
-  const salt    = await bcrypt.genSalt(12);
-  this.password = await bcrypt.hash(this.password, salt);
-
-  next();
+  try {
+    const salt   = await bcrypt.genSalt(env.BCRYPT_ROUNDS);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err as Error);
+  }
 });
 
 // ── Instance methods ──────────────────────────────────────────
 
+/**
+ * Compare a plain-text password against the stored bcrypt hash.
+ * Always requires password to be selected (use .select('+password')).
+ */
 userSchema.methods.comparePassword = async function (
   this: IUser,
   candidate: string,
@@ -111,20 +118,36 @@ userSchema.methods.comparePassword = async function (
   return bcrypt.compare(candidate, this.password);
 };
 
+/**
+ * Derive initials from the user's name (up to 2 characters).
+ * Mirrors the frontend CoTaskioAuth.getInitials() logic.
+ */
+userSchema.methods.getInitials = function (this: IUser): string {
+  const parts = this.name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+/**
+ * Return a plain object safe to send to clients.
+ * Excludes password and internal Mongoose fields.
+ */
 userSchema.methods.toSafeObject = function (this: IUser): SafeUser {
   return {
-    id:              this._id.toString(),
+    id:              (this._id as { toString(): string }).toString(),
     name:            this.name,
     email:           this.email,
-    avatar:          this.avatar,
-    role:            this.role,
+    initials:        this.getInitials(),
     plan:            this.plan,
-    isEmailVerified: this.isEmailVerified,
-    createdAt:       this.createdAt.toISOString(),
-    updatedAt:       this.updatedAt.toISOString(),
+    ...(this.trialStartedAt && {
+      trialStartedAt: this.trialStartedAt.toISOString(),
+    }),
+    signedInAt: new Date().toISOString(),   // Set fresh on login
+    createdAt:  this.createdAt.toISOString(),
   };
 };
 
-// ── Model export ──────────────────────────────────────────────
+// ── Model export ─────────────────────────────────────────────
 
 export const User = model<IUser, IUserModel>('User', userSchema);

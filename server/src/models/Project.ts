@@ -1,40 +1,31 @@
+/**
+ * Project.ts
+ * Mongoose model for CoTaskio projects.
+ *
+ * Access control:
+ *  - owner field references the User who created the project
+ *  - members array contains User references for collaborators
+ *  - Authorization is enforced at the service layer
+ */
+
 import { Schema, model, Document, Model, Types } from 'mongoose';
+import { ProjectStatus, ProjectPriority, SafeProject } from '../types/project.types';
 
-// ── Types ─────────────────────────────────────────────────────
-
-export type ProjectStatus   = 'active' | 'completed' | 'archived';
-export type ProjectPriority = 'low' | 'medium' | 'high';
-
-export interface SafeProject {
-  id:          string;
-  owner:       string;
-  name:        string;
-  description: string;
-  status:      ProjectStatus;
-  priority:    ProjectPriority;
-  dueDate:     string | null;
-  members:     string[];
-  tags:        string[];
-  color:       string;
-  createdAt:   string;
-  updatedAt:   string;
-}
-
-// ── Document interface ────────────────────────────────────────
+// ── Document interface ───────────────────────────────────────
 
 export interface IProject extends Document {
-  _id:         Types.ObjectId;
-  owner:       Types.ObjectId;
-  name:        string;
-  description: string;
-  status:      ProjectStatus;
-  priority:    ProjectPriority;
-  dueDate:     Date | null;
-  members:     Types.ObjectId[];
-  tags:        string[];
-  color:       string;
-  createdAt:   Date;
-  updatedAt:   Date;
+  owner:        Types.ObjectId;
+  name:         string;
+  description:  string;
+  status:       ProjectStatus;
+  priority:     ProjectPriority;
+  startDate:    Date | null;
+  dueDate:      Date | null;
+  members:      Types.ObjectId[];
+  tags:         string[];
+  color:        string;
+  createdAt:    Date;
+  updatedAt:    Date;
 
   toSafeObject(): SafeProject;
 }
@@ -42,7 +33,7 @@ export interface IProject extends Document {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface IProjectModel extends Model<IProject> {}
 
-// ── Schema ────────────────────────────────────────────────────
+// ── Schema ───────────────────────────────────────────────────
 
 const projectSchema = new Schema<IProject, IProjectModel>(
   {
@@ -60,20 +51,24 @@ const projectSchema = new Schema<IProject, IProjectModel>(
       maxlength: [120, 'Project name must be at most 120 characters'],
     },
     description: {
-      type:      String,
-      trim:      true,
-      default:   '',
+      type:     String,
+      trim:     true,
+      default:  '',
       maxlength: [2000, 'Description must be at most 2000 characters'],
     },
     status: {
       type:    String,
-      enum:    ['active', 'completed', 'archived'] satisfies ProjectStatus[],
+      enum:    ['active', 'completed', 'archived'],
       default: 'active',
     },
     priority: {
       type:    String,
-      enum:    ['low', 'medium', 'high'] satisfies ProjectPriority[],
+      enum:    ['low', 'medium', 'high'],
       default: 'medium',
+    },
+    startDate: {
+      type:    Date,
+      default: null,
     },
     dueDate: {
       type:    Date,
@@ -91,7 +86,7 @@ const projectSchema = new Schema<IProject, IProjectModel>(
       type:    String,
       trim:    true,
       default: '#6C63FF',
-      match:   [/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color'],
+      match:   [/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color (e.g. #6C63FF)'],
     },
   },
   {
@@ -100,23 +95,26 @@ const projectSchema = new Schema<IProject, IProjectModel>(
   },
 );
 
-// ── Indexes ───────────────────────────────────────────────────
+// ── Indexes ──────────────────────────────────────────────────
 
+// Compound index for owner + status — common query pattern
 projectSchema.index({ owner: 1, status: 1 });
-projectSchema.index({ members: 1 });
+// Text index for name search
+projectSchema.index({ name: 'text', description: 'text' });
 
 // ── Instance methods ──────────────────────────────────────────
 
 projectSchema.methods.toSafeObject = function (this: IProject): SafeProject {
   return {
-    id:          this._id.toString(),
+    id:          (this._id as { toString(): string }).toString(),
     owner:       this.owner.toString(),
     name:        this.name,
     description: this.description,
     status:      this.status,
     priority:    this.priority,
-    dueDate:     this.dueDate ? this.dueDate.toISOString() : null,
-    members:     this.members.map((m) => m.toString()),
+    startDate:   this.startDate ? this.startDate.toISOString() : null,
+    dueDate:     this.dueDate   ? this.dueDate.toISOString()   : null,
+    members:     this.members.map(m => m.toString()),
     tags:        this.tags,
     color:       this.color,
     createdAt:   this.createdAt.toISOString(),
@@ -124,6 +122,6 @@ projectSchema.methods.toSafeObject = function (this: IProject): SafeProject {
   };
 };
 
-// ── Model export ──────────────────────────────────────────────
+// ── Model export ─────────────────────────────────────────────
 
 export const Project = model<IProject, IProjectModel>('Project', projectSchema);

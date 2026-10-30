@@ -1,30 +1,20 @@
+/**
+ * Task.ts
+ * Mongoose model for CoTaskio tasks.
+ *
+ * Access control:
+ *  - project field references the Project this task belongs to
+ *  - createdBy references the User who created the task
+ *  - assignee is an optional reference to the User assigned to the task
+ *  - Authorization is enforced at the service layer
+ */
+
 import { Schema, model, Document, Model, Types } from 'mongoose';
+import { TaskStatus, TaskPriority, SafeTask } from '../types/task.types';
 
-// ── Types ─────────────────────────────────────────────────────
-
-export type TaskStatus   = 'todo' | 'in_progress' | 'in_review' | 'done';
-export type TaskPriority = 'low' | 'medium' | 'high';
-
-export interface SafeTask {
-  id:          string;
-  project:     string;
-  createdBy:   string;
-  title:       string;
-  description: string;
-  status:      TaskStatus;
-  priority:    TaskPriority;
-  assignee:    string | null;
-  dueDate:     string | null;
-  tags:        string[];
-  order:       number;
-  createdAt:   string;
-  updatedAt:   string;
-}
-
-// ── Document interface ────────────────────────────────────────
+// ── Document interface ───────────────────────────────────────
 
 export interface ITask extends Document {
-  _id:         Types.ObjectId;
   project:     Types.ObjectId;
   createdBy:   Types.ObjectId;
   title:       string;
@@ -44,7 +34,7 @@ export interface ITask extends Document {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface ITaskModel extends Model<ITask> {}
 
-// ── Schema ────────────────────────────────────────────────────
+// ── Schema ───────────────────────────────────────────────────
 
 const taskSchema = new Schema<ITask, ITaskModel>(
   {
@@ -75,12 +65,12 @@ const taskSchema = new Schema<ITask, ITaskModel>(
     },
     status: {
       type:    String,
-      enum:    ['todo', 'in_progress', 'in_review', 'done'] satisfies TaskStatus[],
+      enum:    ['todo', 'in_progress', 'done'],
       default: 'todo',
     },
     priority: {
       type:    String,
-      enum:    ['low', 'medium', 'high'] satisfies TaskPriority[],
+      enum:    ['low', 'medium', 'high'],
       default: 'medium',
     },
     assignee: {
@@ -107,17 +97,22 @@ const taskSchema = new Schema<ITask, ITaskModel>(
   },
 );
 
-// ── Indexes ───────────────────────────────────────────────────
+// ── Indexes ──────────────────────────────────────────────────
 
+// Most common query: all tasks for a project, filtered by status
 taskSchema.index({ project: 1, status: 1 });
-taskSchema.index({ project: 1, order:  1 });
+// Ordered task list within a project
+taskSchema.index({ project: 1, order: 1 });
+// Tasks assigned to a specific user
 taskSchema.index({ assignee: 1 });
+// Text search on title and description
+taskSchema.index({ title: 'text', description: 'text' });
 
 // ── Instance methods ──────────────────────────────────────────
 
 taskSchema.methods.toSafeObject = function (this: ITask): SafeTask {
   return {
-    id:          this._id.toString(),
+    id:          (this._id as { toString(): string }).toString(),
     project:     this.project.toString(),
     createdBy:   this.createdBy.toString(),
     title:       this.title,
@@ -125,7 +120,7 @@ taskSchema.methods.toSafeObject = function (this: ITask): SafeTask {
     status:      this.status,
     priority:    this.priority,
     assignee:    this.assignee ? this.assignee.toString() : null,
-    dueDate:     this.dueDate ? this.dueDate.toISOString() : null,
+    dueDate:     this.dueDate  ? this.dueDate.toISOString()  : null,
     tags:        this.tags,
     order:       this.order,
     createdAt:   this.createdAt.toISOString(),
@@ -133,6 +128,6 @@ taskSchema.methods.toSafeObject = function (this: ITask): SafeTask {
   };
 };
 
-// ── Model export ──────────────────────────────────────────────
+// ── Model export ─────────────────────────────────────────────
 
 export const Task = model<ITask, ITaskModel>('Task', taskSchema);

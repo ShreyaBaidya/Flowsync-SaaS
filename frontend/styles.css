@@ -188,6 +188,15 @@ ul { list-style: none; }
   color: var(--white);
   flex-shrink: 0;
 }
+/* ── Logo image — replaces inline SVG icon ── */
+.logo-img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
 .nav-links {
   display: flex;
   align-items: center;
@@ -484,39 +493,6 @@ ul { list-style: none; }
 .m-task-dot.green { background: var(--green); }
 
 /* ============================================================
-   LOGOS BAR
-   ============================================================ */
-.logos-bar {
-  padding: 40px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.logos-label {
-  text-align: center;
-  font-size: 13px;
-  color: var(--text-sub);
-  margin-bottom: 24px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-}
-.logos-track {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px 0;
-}
-.logo-item {
-  font-size: 15px;
-  font-weight: 700;
-  color: rgba(148,163,184,0.45);
-  letter-spacing: -0.02em;
-  padding: 8px 28px;
-  transition: color var(--transition);
-}
-.logo-item:hover { color: rgba(148,163,184,0.75); }
-
-/* ============================================================
    FEATURES
    ============================================================ */
 .features { background: var(--navy); }
@@ -658,33 +634,6 @@ ul { list-style: none; }
   border-radius: 1px;
   opacity: 0.4;
 }
-
-/* ============================================================
-   STATS BAND
-   ============================================================ */
-.stats-band {
-  padding: 64px 0;
-  background: linear-gradient(135deg, rgba(108,99,255,0.08) 0%, rgba(59,130,246,0.06) 100%);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 32px;
-  text-align: center;
-}
-.stat-number {
-  font-size: clamp(36px, 5vw, 52px);
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--violet), var(--blue));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1;
-  margin-bottom: 8px;
-}
-.stat-label { font-size: 14px; color: var(--text-sub); font-weight: 500; }
 
 /* ============================================================
    PRICING
@@ -996,7 +945,6 @@ ul { list-style: none; }
   .features-grid { grid-template-columns: 1fr; }
   .steps-grid { grid-template-columns: 1fr; }
   .step-connector { display: none; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
   .testimonials-grid { grid-template-columns: 1fr; }
   .mockup-sidebar { display: none; }
@@ -1007,13 +955,10 @@ ul { list-style: none; }
 }
 
 @media (max-width: 480px) {
-  .stats-grid { grid-template-columns: 1fr; max-width: 280px; margin: 0 auto; }
   .footer-links { grid-template-columns: 1fr; }
   .hero-actions { flex-direction: column; width: 100%; }
   .btn-lg { width: 100%; justify-content: center; }
   .cta-actions { flex-direction: column; }
-  .logos-track { gap: 0; }
-  .logo-item { padding: 6px 16px; }
 }
 
 /* Active nav link */

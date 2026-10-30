@@ -1,12 +1,12 @@
 /* ============================================================
-   Flowsync — Auth Pages JavaScript
+   CoTaskio — Auth Pages JavaScript
    ============================================================ */
 
 (function () {
   'use strict';
 
   /* ── If already signed in, redirect away from auth pages ── */
-  if (FlowsyncAuth.isSignedIn()) {
+  if (CoTaskioAuth.isSignedIn()) {
     const page = window.location.pathname.split('/').pop();
     if (page === 'signin.html' || page === 'signup.html') {
       window.location.replace('dashboard.html');
@@ -15,10 +15,10 @@
   }
 
   /* ── Theme init and toggle injection ── */
-  if (typeof FlowsyncTheme !== 'undefined') {
-    FlowsyncTheme.init();
+  if (typeof CoTaskioTheme !== 'undefined') {
+    CoTaskioTheme.init();
     const navThemeToggle = document.getElementById('navThemeToggle');
-    if (navThemeToggle) FlowsyncTheme.injectToggle(navThemeToggle);
+    if (navThemeToggle) CoTaskioTheme.injectToggle(navThemeToggle);
   }
 
   /* ── Utility: show a toast notification ── */
@@ -174,8 +174,8 @@
         .then((data) => {
           // Response envelope: { success, data: { user, accessToken } }
           const payload = data.data || data;
-          const existing = FlowsyncAuth.getUser();
-          FlowsyncAuth.signIn({
+          const existing = CoTaskioAuth.getUser();
+          CoTaskioAuth.signIn({
             name:           payload.user?.name  || email.split('@')[0],
             email:          payload.user?.email || email,
             plan:           payload.user?.plan  || existing?.plan || 'starter',
@@ -183,7 +183,7 @@
             token:          payload.accessToken
           });
           if (payload.accessToken) {
-            FlowsyncAuth.setToken(payload.accessToken);
+            CoTaskioAuth.setToken(payload.accessToken);
           }
           showToast('Signed in successfully! Redirecting…', 'success');
           setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
@@ -286,11 +286,11 @@
       setButtonLoading(submitBtn, true);
 
       // Read the plan the user selected on the pricing page (if any)
-      const pendingPlan = sessionStorage.getItem('flowsync_pending_plan') || 'starter';
+      const pendingPlan = sessionStorage.getItem('cotaskio_pending_plan') || 'starter';
 
       ApiClient.post('/auth/signup', { name, email, password, plan: pendingPlan })
         .then((data) => {
-          sessionStorage.removeItem('flowsync_pending_plan');
+          sessionStorage.removeItem('cotaskio_pending_plan');
 
           // Response envelope: { success, data: { user, accessToken } }
           const payload = data.data || data;
@@ -303,11 +303,11 @@
           if (signInData.plan === 'pro_trial') {
             signInData.trialStartedAt = payload.user?.trialStartedAt || Date.now();
           }
-          FlowsyncAuth.signIn(signInData);
+          CoTaskioAuth.signIn(signInData);
           if (payload.accessToken) {
-            FlowsyncAuth.setToken(payload.accessToken);
+            CoTaskioAuth.setToken(payload.accessToken);
           }
-          showToast('Account created! Welcome to Flowsync.', 'success');
+          showToast('Account created! Welcome to CoTaskio.', 'success');
           setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
         })
         .catch((err) => {

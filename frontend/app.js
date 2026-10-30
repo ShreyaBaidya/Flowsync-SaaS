@@ -1,30 +1,30 @@
 /* ============================================================
-   Flowsync — App JavaScript
+   CoTaskio — App JavaScript
    ============================================================ */
 
 (function () {
   'use strict';
 
   /* ── Theme init (must run early) ── */
-  if (typeof FlowsyncTheme !== 'undefined') {
-    FlowsyncTheme.init();
+  if (typeof CoTaskioTheme !== 'undefined') {
+    CoTaskioTheme.init();
     // Inject toggle into the landing-page navbar
     const navThemeToggle = document.getElementById('navThemeToggle');
-    if (navThemeToggle) FlowsyncTheme.injectToggle(navThemeToggle);
+    if (navThemeToggle) CoTaskioTheme.injectToggle(navThemeToggle);
     // Also inject into the mobile menu so it's accessible on small screens
     const mobileThemeRow = document.getElementById('mobileThemeRow');
-    if (mobileThemeRow) FlowsyncTheme.injectToggle(mobileThemeRow);
+    if (mobileThemeRow) CoTaskioTheme.injectToggle(mobileThemeRow);
   }
 
   /* ============================================================
      NAVBAR AUTH STATE
-     Reads from FlowsyncAuth (auth-state.js) and updates the
+     Reads from CoTaskioAuth (auth-state.js) and updates the
      navbar immediately on load. No page refresh needed after
      login because auth.js writes to localStorage then redirects
      here, so this runs fresh on every page load.
   ============================================================ */
   function initNavbarAuth() {
-    const user        = FlowsyncAuth.getUser();
+    const user        = CoTaskioAuth.getUser();
     const navAuthOut  = document.getElementById('navAuthOut');
     const navAuthIn   = document.getElementById('navAuthIn');
     const profileAvatar  = document.getElementById('profileAvatar');
@@ -102,7 +102,7 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        FlowsyncAuth.signOut();
+        CoTaskioAuth.signOut();
         initNavbarAuth(); // re-render navbar immediately, no reload needed
         // Close dropdown
         const profileDropdown = document.getElementById('profileDropdown');
@@ -115,7 +115,7 @@
     const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
     if (mobileLogoutBtn) {
       mobileLogoutBtn.addEventListener('click', () => {
-        FlowsyncAuth.signOut();
+        CoTaskioAuth.signOut();
         initNavbarAuth();
         // Close mobile menu
         document.getElementById('mobileMenu')?.classList.remove('open');
@@ -191,7 +191,7 @@
   // Unauthenticated users are redirected to sign in instead.
   document.querySelectorAll('[data-feature-link]').forEach(card => {
     card.addEventListener('click', function (e) {
-      if (!FlowsyncAuth.isSignedIn()) {
+      if (!CoTaskioAuth.isSignedIn()) {
         e.preventDefault();
         window.location.href = 'signin.html';
       }
@@ -201,21 +201,21 @@
 
   /* ── Pricing plan buttons ── */
   function handlePlanClick(plan) {
-    if (FlowsyncAuth.isSignedIn()) {
+    if (CoTaskioAuth.isSignedIn()) {
       // Already signed in — activate plan then go straight to the app
       if (plan === 'pro_trial') {
-        const user = FlowsyncAuth.getUser();
+        const user = CoTaskioAuth.getUser();
         // Only start a new trial if not already on one
         if (user.plan !== 'pro_trial') {
-          FlowsyncAuth.updateUser({ plan: 'pro_trial', trialStartedAt: Date.now() });
+          CoTaskioAuth.updateUser({ plan: 'pro_trial', trialStartedAt: Date.now() });
         }
       } else {
-        FlowsyncAuth.updateUser({ plan: 'starter' });
+        CoTaskioAuth.updateUser({ plan: 'starter' });
       }
       window.location.href = 'dashboard.html';
     } else {
       // Not signed in — stash the chosen plan so signup.html can pick it up
-      sessionStorage.setItem('flowsync_pending_plan', plan);
+      sessionStorage.setItem('cotaskio_pending_plan', plan);
       window.location.href = 'signup.html';
     }
   }
@@ -315,7 +315,7 @@
   /* ── Dynamic copyright year ── */
   const copyrightEl = document.getElementById('footerCopyright');
   if (copyrightEl) {
-    copyrightEl.textContent = `© ${new Date().getFullYear()} Flowsync, Inc. All rights reserved.`;
+    copyrightEl.textContent = `© ${new Date().getFullYear()} CoTaskio, Inc. All rights reserved.`;
   }
 
 })();

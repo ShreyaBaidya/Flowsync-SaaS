@@ -1,127 +1,107 @@
+/**
+ * token.ts
+ * JWT + refresh token utilities.
+ *
+ * Access token:   signed JWT, verified in-memory, short-lived (15m)
+ * Refresh token:  opaque random string stored in DB + httpOnly cookie, 7d
+ */
+
 import jwt from 'jsonwebtoken';
-import { CookieOptions } from 'express';
+import crypto from 'crypto';
+import { Types } from 'mongoose';
 import { env } from '../config/env';
-import type { UserRole, UserPlan } from '../types/user.types';
+import { AccessTokenPayload, RefreshTokenPayload, UserPlan } from '../types/auth.types';
 
-// ── Payload shapes ────────────────────────────────────────────
+// ── Access token ──────────────────────────────────────────────
 
-export interface AccessTokenPayload {
-  sub:  string;
+export function signAccessToken(payload: {
+  sub:   string;
   email: string;
-  role: UserRole;
-  plan: UserPlan;
+  name:  string;
+  plan:  UserPlan;
+}): string {
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+    issuer:    'cotaskio',
+    audience:  'cotaskio-client',
+  });
 }
 
-export interface RefreshTokenPayload {
-  sub:          string;
-  tokenVersion: number;
+export function verifyAccessToken(token: string): AccessTokenPayload {
+  return jwt.verify(token, env.JWT_ACCESS_SECRET, {
+    issuer:   'cotaskio',
+    audience: 'cotaskio-client',
+  }) as AccessTokenPayload;
 }
 
-// ── Input accepted by both generate functions ─────────────────
+// ── Refresh token ────────────────────────────────────────────
 
-export interface TokenUser {
-  id:           string;
-  email:        string;
-  role:         UserRole;
-  plan:         UserPlan;
-  tokenVersion: number;
+/**
+ * Generate a cryptographically secure opaque refresh token string.
+ * This is what goes in the cookie and the database — not a JWT.
+ */
+export function generateRefreshTokenString(): string {
+  return crypto.randomBytes(64).toString('hex');
 }
 
-// ── Duration string → milliseconds ───────────────────────────
-// Used to set cookie maxAge from the same expiry string as the JWT.
+/**
+ * Sign a JWT that encodes the refresh token metadata.
+ * Stored alongside the opaque string in the DB for payload lookup.
+ */
+export function signRefreshTokenJwt(payload: {
+  sub:     string;
+  tokenId: string;
+}): string {
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+    issuer:    'cotaskio',
+    audience:  'cotaskio-refresh',
+  });
+}
 
-function durationToMs(duration: string): number {
+export function verifyRefreshTokenJwt(token: string): RefreshTokenPayload {
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, {
+    issuer:   'cotaskio',
+    audience: 'cotaskio-refresh',
+  }) as RefreshTokenPayload;
+}
+
+// ── Cookie helpers ────────────────────────────────────────────
+
+/** Standard httpOnly cookie options for the refresh token */
+export function refreshCookieOptions(maxAge?: number): {
+  httpOnly: boolean;
+  secure:   boolean;
+  sameSite: 'strict' | 'lax' | 'none';
+  maxAge:   number;
+  path:     string;
+} {
+  return {
+    httpOnly: true,
+    secure:   env.isProd,          // HTTPS only in production
+    sameSite: env.isProd ? 'strict' : 'lax',
+    maxAge:   maxAge ?? env.COOKIE_MAX_AGE,
+    path:     '/api/v1/auth',      // Scope cookie to auth routes only
+  };
+}
+
+/** Calculate expiry Date from a duration string like "7d" or "15m" */
+export function expiryFromDuration(duration: string): Date {
   const unit  = duration.slice(-1);
   const value = parseInt(duration.slice(0, -1), 10);
 
-  const map: Record<string, number> = {
+  const ms: Record<string, number> = {
     s: 1_000,
     m: 60_000,
     h: 3_600_000,
     d: 86_400_000,
   };
 
-  const factor = map[unit];
-  if (factor === undefined) {
-    throw new Error(`Invalid duration unit "${unit}" in "${duration}"`);
-  }
-
-  return value * factor;
+  return new Date(Date.now() + value * (ms[unit] ?? ms['d']));
 }
 
-// ── Generate ──────────────────────────────────────────────────
+// ── ObjectId helper ───────────────────────────────────────────
 
-export function generateAccessToken(user: TokenUser): string {
-  const payload: AccessTokenPayload = {
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-    plan: user.plan,
-  };
-
-  return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
-    expiresIn: env.ACCESS_TOKEN_EXPIRES_IN,
-  });
-}
-
-export function generateRefreshToken(user: TokenUser): string {
-  const payload: RefreshTokenPayload = {
-    sub: user.id,
-    tokenVersion: user.tokenVersion,
-  };
-
-  return jwt.sign(payload, env.REFRESH_TOKEN_SECRET, {
-    expiresIn: env.REFRESH_TOKEN_EXPIRES_IN,
-  });
-}
-
-// ── Verify ────────────────────────────────────────────────────
-
-export function verifyAccessToken(token: string): AccessTokenPayload {
-  try {
-    return jwt.verify(token, env.ACCESS_TOKEN_SECRET) as AccessTokenPayload;
-  } catch (err) {
-    if (err instanceof jwt.TokenExpiredError) {
-      throw new Error('Access token has expired');
-    }
-    if (err instanceof jwt.JsonWebTokenError) {
-      throw new Error('Invalid access token');
-    }
-    throw new Error('Access token verification failed');
-  }
-}
-
-export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  try {
-    return jwt.verify(token, env.REFRESH_TOKEN_SECRET) as RefreshTokenPayload;
-  } catch (err) {
-    if (err instanceof jwt.TokenExpiredError) {
-      throw new Error('Refresh token has expired');
-    }
-    if (err instanceof jwt.JsonWebTokenError) {
-      throw new Error('Invalid refresh token');
-    }
-    throw new Error('Refresh token verification failed');
-  }
-}
-
-// ── Cookie options ────────────────────────────────────────────
-
-export function refreshCookieOptions(): CookieOptions {
-  return {
-    httpOnly: true,
-    secure:   env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE,
-    path:     '/api/v1/auth', // scope cookie to auth routes only
-    maxAge:   durationToMs(env.REFRESH_TOKEN_EXPIRES_IN),
-  };
-}
-
-export function clearCookieOptions(): CookieOptions {
-  return {
-    httpOnly: true,
-    secure:   env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE,
-    path:     '/api/v1/auth',
-  };
+export function toObjectId(id: string): Types.ObjectId {
+  return new Types.ObjectId(id);
 }

@@ -1,14 +1,14 @@
 /* ============================================================
-   TASKLUNE — Auth State Module
+   CoTaskio — Auth State Module
    Single source of truth for authentication state.
    Used by auth.js (write) and app.js / navbar (read).
    Storage: localStorage — persists across page refreshes.
    ============================================================ */
 
-const FlowsyncAuth = (function () {
+const CoTaskioAuth = (function () {
   'use strict';
 
-  const STORAGE_KEY = 'flowsync_user';
+  const STORAGE_KEY = 'cotaskio_user';
 
   /** Save a user session to localStorage */
   function signIn(userData) {

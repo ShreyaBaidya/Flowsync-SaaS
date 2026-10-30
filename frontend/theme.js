@@ -1,13 +1,13 @@
 /* ============================================================
-   TASKLUNE — Theme Engine
+   CoTaskio — Theme Engine
    Manages light/dark theme across all pages.
-   Exports: window.FlowsyncTheme
+   Exports: window.CoTaskioTheme
    ============================================================ */
 
-const FlowsyncTheme = (function () {
+const CoTaskioTheme = (function () {
   'use strict';
 
-  const STORAGE_KEY = 'flowsync-theme';
+  const STORAGE_KEY = 'cotaskio-theme';
   const THEMES      = { DARK: 'dark', LIGHT: 'light' };
 
   /* ── Read / apply / save ── */

@@ -1,359 +1,263 @@
-# 🚀 FlowSync – Full-Stack SaaS Project Management Platform
+# CoTaskio — Full-Stack SaaS Project Management Platform
 
-FlowSync is a modern **full-stack SaaS project management platform** built with **HTML, CSS, JavaScript, TypeScript, Node.js, Express.js, and MongoDB**.
+CoTaskio is a full-stack project management platform built with HTML, CSS, JavaScript, TypeScript, Node.js, Express.js, and MongoDB. It provides project and task management through a responsive web interface and a backend API.
 
-It enables individuals and teams to securely organize projects, manage tasks, collaborate, and monitor progress through an intuitive dashboard using **JWT Authentication**, **Refresh Token Rotation**, and a RESTful backend.
+## Features
 
-It enables users to securely manage projects and tasks through a clean and responsive interface with **JWT Authentication**, **Refresh Token Rotation**, and a RESTful backend.
+### Project Management
+- Create, view, update, and delete projects
+- Track project status
+- Store project data in MongoDB
 
----
+### Task Management
+- Create, view, update, and delete tasks
+- Organize tasks by project
+- Manage task priorities, statuses, and due dates
 
-## ✨ Features
+### Dashboard and User Interface
+- Dashboard for project and task information
+- Timeline view for tasks
+- Responsive interface
+- Light and dark themes
+- Loading and empty states
 
-### 🔐 Authentication
+### Authentication and Security
+- JWT authentication
+- Refresh token rotation
+- Password hashing with bcrypt
+- HTTP-only refresh-token cookies
+- CORS configuration
+- Helmet security headers
+- Rate limiting
+- Centralized error handling
+- Environment-variable validation
 
-- User Registration
-- User Login
-- JWT Access Token Authentication
-- Refresh Token Rotation
-- HTTP-only Refresh Token Cookies
-- Protected API Routes
-- Logout
-- Logout from All Devices
-- Get Current User
-- Persistent User Sessions
+## Tech Stack
 
----
-
-### 📊 Dashboard
-
-- Total Projects
-- Total Tasks
-- Completed Tasks
-- Pending Tasks
-- Overdue Tasks
-- Completion Percentage
-- Recent Activity
-- Personalized Welcome Message
-
----
-
-### 📁 Project Management
-
-- Create Projects
-- View Projects
-- Update Projects
-- Delete Projects
-- Project Status Tracking
-- MongoDB Persistence
-
----
-
-### ✅ Task Management
-
-- Create Tasks
-- View Tasks
-- Update Tasks
-- Delete Tasks
-- Project-wise Task Organization
-- Task Priorities
-- Task Status Management
-- Due Dates
-
----
-
-### 📅 Timeline
-
-- Timeline View of Tasks
-- Due Date Visualization
-- Chronological Task Ordering
-- Status Indicators
-
----
-
-### 👥 Team
-
-- Invite Team Members (Frontend)
-- Local Team Management
-- Ready for Backend Team API Integration
-
----
-
-### 🎨 User Experience
-
-- Responsive Design
-- Light / Dark Theme
-- Loading States
-- Empty States
-- Clean User Interface
-- User-Friendly Error Handling
-
----
-
-### 🔒 Security
-
-- JWT Authentication
-- Refresh Token Rotation
-- Password Hashing (bcrypt)
-- HTTP-only Refresh Token Cookies
-- Helmet Security Headers
-- CORS Protection
-- Rate Limiting
-- Centralized Error Handling
-- Environment Variable Validation
-
----
-
-# 🏗️ Tech Stack
-
-## Frontend
-
+**Frontend**
 - HTML5
 - CSS3
 - JavaScript (ES6)
 - Fetch API
 
-## Backend
-
+**Backend**
 - Node.js
 - Express.js
 - TypeScript
 
-## Database
-
+**Database**
 - MongoDB
 - Mongoose
 
-## Authentication
+**Authentication**
+- JSON Web Tokens (JWT)
+- Refresh tokens
+- HTTP-only cookies
 
-- JWT
-- Refresh Tokens
-- HTTP-only Cookies
-
-## Storage
-
-- MongoDB (Primary Data Store)
-- localStorage (Frontend Cache & UI Preferences)
-
----
-
-# 📂 Project Structure
+## Project Structure
 
 ```text
-FlowSync
-│
-├── server
-│   ├── src
-│   │   ├── config
-│   │   ├── controllers
-│   │   ├── middleware
-│   │   ├── models
-│   │   ├── routes
-│   │   ├── services
-│   │   ├── types
-│   │   ├── utils
+SaaSProject/
+├── frontend/
+│   ├── assets/
+│   ├── api-client.js
+│   ├── app-store.js
+│   ├── app.js
+│   ├── auth-state.js
+│   ├── auth.css
+│   ├── auth.js
+│   ├── contact-sales.js
+│   ├── dashboard.css
+│   ├── dashboard.html
+│   ├── dashboard.js
+│   ├── forgot-password.html
+│   ├── index.html
+│   ├── navbar-auth.css
+│   ├── profile.css
+│   ├── profile.html
+│   ├── profile.js
+│   ├── settings.html
+│   ├── settings.js
+│   ├── signin.html
+│   ├── signup.html
+│   ├── styles.css
+│   ├── theme.css
+│   └── theme.js
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── types/
+│   │   ├── utils/
 │   │   ├── app.ts
 │   │   └── index.ts
-│   │
 │   ├── package.json
+│   ├── package-lock.json
 │   ├── tsconfig.json
 │   └── .env.example
-│
-├── api-client.js
-├── app-store.js
-├── auth-state.js
-├── auth.js
-├── dashboard.html
-├── dashboard.js
-├── index.html
-├── signin.html
-├── signup.html
-├── profile.html
-├── settings.html
-├── styles.css
+├── .gitignore
 └── README.md
 ```
 
----
+## Installation and Setup
 
-# ⚙️ Installation
+### Prerequisites
+- Node.js 18 or later
+- npm
+- MongoDB, either a local instance or MongoDB Atlas
 
-## 1. Clone the Repository
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ShreyaBaidya/FlowSync-saas.git
-
-cd FlowSync-saas
+git clone https://github.com/ShreyaBaidya/Flowsync-SaaS.git
+cd Flowsync-SaaS
 ```
 
----
-
-## 2. Backend Setup
-
-Navigate to the server directory:
+### 2. Install Backend Dependencies
 
 ```bash
 cd server
-```
-
-Install dependencies:
-
-```bash
 npm install
 ```
 
----
+### 3. Configure Environment Variables
 
-## 3. Create Environment Variables
+Create a `.env` file inside the `server/` directory by copying the example file.
 
-Copy the example file.
-
-### Windows
+**Windows PowerShell:**
 
 ```powershell
-copy .env.example .env
+Copy-Item .env.example .env
 ```
 
-### Linux / macOS
+**Linux/macOS:**
 
 ```bash
 cp .env.example .env
 ```
 
-Update the `.env` file with your own values.
+Update `server/.env` with the appropriate values for your environment.
 
-Example:
+The backend expects these variables:
 
-```env
-# Server
-PORT=5000
+| Variable | Purpose |
+|---|---|
+| `NODE_ENV` | Runtime environment |
+| `PORT` | Backend listening port |
+| `API_PREFIX` | API route prefix |
+| `MONGODB_URI` | MongoDB connection string |
+| `CORS_ORIGINS` | Comma-separated list of permitted frontend origins |
+| `JWT_ACCESS_SECRET` | Secret used for access tokens |
+| `JWT_REFRESH_SECRET` | Secret used for refresh tokens |
+| `JWT_ACCESS_EXPIRES_IN` | Access-token lifetime |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh-token lifetime |
+| `COOKIE_MAX_AGE` | Refresh-cookie lifetime in milliseconds |
+| `BCRYPT_ROUNDS` | Password-hashing cost |
+| `LOG_LEVEL` | Logging level |
 
-# Database
-MONGODB_URI=mongodb://127.0.0.1:27017/flowsync
+Generate strong JWT secrets using:
 
-# JWT
-ACCESS_TOKEN_SECRET=your_super_secure_access_token_secret_here
-REFRESH_TOKEN_SECRET=your_super_secure_refresh_token_secret_here
-
-ACCESS_TOKEN_EXPIRES_IN=15m
-REFRESH_TOKEN_EXPIRES_IN=7d
-
-# Frontend
-CLIENT_URL=http://127.0.0.1:5500
-
-# Cookies
-COOKIE_SECURE=false
-COOKIE_SAME_SITE=lax
-
-# Environment
-NODE_ENV=development
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
----
+Run the command twice to generate separate access-token and refresh-token secrets.
 
-## 4. Start the Backend
+**Security:** Never commit `server/.env` or publish your actual secrets.
+
+### 4. Build and Start the Backend
+
+For development:
 
 ```bash
 npm run dev
 ```
 
-The backend will start on:
+For a production build:
 
-```
-http://localhost:5000
-```
-
----
-
-## 5. Run the Frontend
-
-Open the project using **VS Code Live Server** (or any static web server).
-
-The frontend communicates with:
-
-```
-http://localhost:5000
+```bash
+npm run build
+npm start
 ```
 
----
+The default backend port is `5000`, and the default API prefix is `/api/v1`.
 
-# 📡 REST API
+### 5. Run the Frontend
 
-## Authentication
+Serve the contents of the `frontend/` directory using a static web server, such as the VS Code Live Server extension.
+
+The frontend API base URL is currently configured in `frontend/api-client.js`. Update it to match the backend endpoint when deploying the application.
+
+## API Endpoints
+
+The backend API uses the `/api/v1` prefix by default.
+
+### Health Checks
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/v1/health` | Server liveness |
+| GET | `/api/v1/health/ready` | Server and database readiness |
+
+### Authentication
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/v1/auth/signup` | Register a user |
+| POST | `/api/v1/auth/signin` | Sign in |
+| POST | `/api/v1/auth/signout` | Sign out |
+| POST | `/api/v1/auth/refresh` | Refresh authentication tokens |
+| GET | `/api/v1/auth/me` | Get the authenticated user |
+
+### Dashboard
 
 | Method | Endpoint |
-|---------|----------|
-| POST | `/api/v1/auth/signup` |
-| POST | `/api/v1/auth/signin` |
-| POST | `/api/v1/auth/refresh` |
-| POST | `/api/v1/auth/logout` |
-| POST | `/api/v1/auth/logout-all` |
-| GET | `/api/v1/auth/me` |
-
----
-
-## Dashboard
-
-| Method | Endpoint |
-|---------|----------|
+|---|---|
 | GET | `/api/v1/dashboard` |
 
----
-
-## Projects
+### Projects
 
 | Method | Endpoint |
-|---------|----------|
+|---|---|
 | GET | `/api/v1/projects` |
 | POST | `/api/v1/projects` |
 | PUT | `/api/v1/projects/:projectId` |
 | DELETE | `/api/v1/projects/:projectId` |
 
----
-
-## Tasks
+### Tasks
 
 | Method | Endpoint |
-|---------|----------|
+|---|---|
 | GET | `/api/v1/projects/:projectId/tasks` |
 | POST | `/api/v1/projects/:projectId/tasks` |
 | PUT | `/api/v1/projects/:projectId/tasks/:taskId` |
 | DELETE | `/api/v1/projects/:projectId/tasks/:taskId` |
 
----
+## Deployment Notes
 
-# 🔒 Security Features
+- Keep environment-specific values and secrets in `server/.env`.
+- Configure `CORS_ORIGINS` to include the exact origin serving the frontend.
+- Configure the frontend API base URL to point to the deployed backend.
+- Use HTTPS for production deployments, particularly when authentication cookies are involved.
+- Keep local database backups and generated build files out of version control.
 
-- JWT Authentication
-- Refresh Token Rotation
-- Password Hashing using bcrypt
-- HTTP-only Cookies
-- Helmet
-- CORS
-- Rate Limiting
-- Secure Environment Variables
-- Centralized Error Handling
+## Future Enhancements
 
----
-
-# 🚀 Future Enhancements
-
-- Backend Team Management API
-- Workspace Invitations
-- Role-Based Access Control (RBAC)
-- Drag & Drop Kanban Board
-- Email Verification
-- Forgot Password & Password Reset
+Potential future enhancements include:
+- Backend team-management APIs
+- Workspace invitations
+- Role-based access control
+- Email verification and password recovery
 - Notifications
-- Calendar Integration
-- File Attachments
-- Docker Support
-- CI/CD Pipeline
-- Automated Testing
+- Calendar integration
+- File attachments
+- Automated testing and CI/CD
 
----
-
-# 👩‍💻 Author
+## Author
 
 **Shreya Baidya**
 
@@ -361,9 +265,3 @@ B.Tech, Electronics and Communication Engineering
 Indian Institute of Technology (ISM) Dhanbad
 
 GitHub: https://github.com/ShreyaBaidya
-
----
-
-## ⭐ Support
-
-If you found this project useful, consider giving it a ⭐ on GitHub!

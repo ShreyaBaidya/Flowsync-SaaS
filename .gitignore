@@ -1,1 +1,19 @@
-server_backup/
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local database backup
+mongodb-backup/
+
+# Active backend: generated files and secrets
+server/node_modules/
+server/dist/
+server/.env
+server/.env.local
+server/.env.*.local
+server/logs/
+server/*.log
+server/*.tsbuildinfo
+
+# Old backend backup: exclude entirely
+backend_old/

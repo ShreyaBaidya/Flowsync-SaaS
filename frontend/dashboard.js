@@ -8,19 +8,19 @@
   'use strict';
 
   /* ── Theme init ── */
-  if (typeof FlowsyncTheme !== 'undefined') {
-    FlowsyncTheme.init();
+  if (typeof CoTaskioTheme !== 'undefined') {
+    CoTaskioTheme.init();
     const topbarThemeToggle = document.getElementById('topbarThemeToggle');
-    if (topbarThemeToggle) FlowsyncTheme.injectToggle(topbarThemeToggle);
+    if (topbarThemeToggle) CoTaskioTheme.injectToggle(topbarThemeToggle);
   }
 
   /* ── Auth guard ── */
-  if (!FlowsyncAuth.isSignedIn()) {
+  if (!CoTaskioAuth.isSignedIn()) {
     window.location.replace('signin.html');
     return;
   }
 
-  const user = FlowsyncAuth.getUser();
+  const user = CoTaskioAuth.getUser();
 
   /* ══════════════════════════════════════════
      UTILITIES
@@ -165,7 +165,7 @@
 
   // Logout
   el('sidebarLogoutBtn').addEventListener('click', () => {
-    FlowsyncAuth.signOut();
+    CoTaskioAuth.signOut();
     window.location.href = 'signin.html';
   });
 
@@ -373,18 +373,18 @@
       // Fallback: derive stats from local store on API failure
       console.warn('Dashboard API unavailable, falling back to local data:', err.message);
 
-      const gs = FlowsyncStore.getStats();
+      const gs = CoTaskioStore.getStats();
       renderDashboardStats({
-        totalProjects:        FlowsyncStore.getProjects().length,
+        totalProjects:        CoTaskioStore.getProjects().length,
         totalTasks:           gs.total,
         completedTasks:       gs.done,
         pendingTasks:         gs.total - gs.done,
-        overdueTasks:         FlowsyncStore.getTasks().filter(t =>
+        overdueTasks:         CoTaskioStore.getTasks().filter(t =>
                                 t.status !== 'done' && isOverdue(t.dueDate)
                               ).length,
         completionPercentage: gs.pct,
       });
-      const localActs = FlowsyncStore.getActivity().slice(0, 6);
+      const localActs = CoTaskioStore.getActivity().slice(0, 6);
       renderDashboardActivity(
         localActs.map(a => ({ text: a.text, time: new Date(a.time).toISOString() }))
       );
@@ -394,10 +394,10 @@
     try {
       // Ensure projects are loaded; fetchProjects may already be cached but calling it
       // here guarantees the dashboard always shows up-to-date data on every page load.
-      await FlowsyncStore.fetchProjects();
+      await CoTaskioStore.fetchProjects();
     } catch (_) { /* non-fatal — fall through to render whatever is cached */ }
 
-    const activeProjects = FlowsyncStore.getProjects().filter(p => p.status === 'active');
+    const activeProjects = CoTaskioStore.getProjects().filter(p => p.status === 'active');
 
     if (!activeProjects.length) {
       el('dashProjectBody').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📁</div><h3>No active projects</h3><p>Create a project to get started.</p></div>';
@@ -405,12 +405,12 @@
       // Fetch tasks for every active project in parallel so getStats() has real data
       await Promise.all(
         activeProjects.map(p =>
-          FlowsyncStore.fetchTasks(p.id).catch(() => { /* ignore per-project failures */ })
+          CoTaskioStore.fetchTasks(p.id).catch(() => { /* ignore per-project failures */ })
         )
       );
 
       const items = activeProjects.map((proj, idx) => {
-        const ps = FlowsyncStore.getStats(proj.id);
+        const ps = CoTaskioStore.getStats(proj.id);
         const isLast = idx === activeProjects.length - 1;
         return `
           <div style="margin-bottom:${isLast ? '0' : '20px'};padding-bottom:${isLast ? '0' : '20px'};${isLast ? '' : 'border-bottom:1px solid var(--border);'}">
@@ -432,13 +432,13 @@
     }
 
     // Mini kanban — always from local store (not changed)
-    const allTasks = FlowsyncStore.getTasks();
+    const allTasks = CoTaskioStore.getTasks();
     const todo   = allTasks.filter(t => t.status === 'todo').slice(0, 3);
     const inprog = allTasks.filter(t => t.status === 'inprog').slice(0, 3);
     const done   = allTasks.filter(t => t.status === 'done').slice(0, 3);
     function miniCol(label, cls, items) {
       const cards = items.map(t => {
-        const proj = FlowsyncStore.getProject(t.projectId);
+        const proj = CoTaskioStore.getProject(t.projectId);
         return `<div class="task-card">
           <div class="task-card-title">${escHtml(t.title)}</div>
           <div class="task-card-meta">
@@ -469,7 +469,7 @@
   async function renderProjects() {
     el('projectsGrid').innerHTML = '<div style="padding:32px;color:var(--text-sub);font-size:13px;text-align:center;grid-column:1/-1">Loading projects…</div>';
     try {
-      await FlowsyncStore.fetchProjects();
+      await CoTaskioStore.fetchProjects();
     } catch (err) {
       el('projectsGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">⚠️</div><h3>Could not load projects</h3><p>Check your connection and try again.</p></div>`;
       return;
@@ -478,13 +478,13 @@
   }
 
   function _renderProjectsFromCache() {
-    const projects = FlowsyncStore.getProjects();
+    const projects = CoTaskioStore.getProjects();
     if (!projects.length) {
       el('projectsGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📁</div><h3>No projects yet</h3><p>Click "New Project" to create your first project.</p></div>`;
       return;
     }
     el('projectsGrid').innerHTML = projects.map(p => {
-      const ps = FlowsyncStore.getStats(p.id);
+      const ps = CoTaskioStore.getStats(p.id);
       const od = p.deadline && isOverdue(p.deadline) && p.status !== 'completed';
       return `<div class="project-card">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -516,7 +516,7 @@
   function openProjectModal(id) {
     editingProjectId = id || null;
     el('projectModalTitle').textContent = id ? 'Edit Project' : 'New Project';
-    const p = id ? FlowsyncStore.getProject(id) : null;
+    const p = id ? CoTaskioStore.getProject(id) : null;
     el('pName').value     = p ? p.name        : '';
     el('pDesc').value     = p ? (p.description||'') : '';
     el('pDeadline').value = p ? (p.deadline||'')    : '';
@@ -535,8 +535,8 @@
     const saveBtn = el('saveProjectBtn');
     saveBtn.disabled = true;
     try {
-      await FlowsyncStore.saveProject(data);
-      FlowsyncStore.addActivity(`Project "${name}" ${editingProjectId ? 'updated' : 'created'}.`);
+      await CoTaskioStore.saveProject(data);
+      CoTaskioStore.addActivity(`Project "${name}" ${editingProjectId ? 'updated' : 'created'}.`);
       closeModal('projectModal');
       toast(editingProjectId ? 'Project updated.' : 'Project created.');
       _renderProjectsFromCache();
@@ -552,12 +552,12 @@
 
   App.editProject   = (id) => openProjectModal(id);
   App.deleteProject = async (id) => {
-    const p = FlowsyncStore.getProject(id);
+    const p = CoTaskioStore.getProject(id);
     if (!p) return;
     if (!confirm(`Delete "${p.name}" and all its tasks? This cannot be undone.`)) return;
     try {
-      await FlowsyncStore.deleteProject(id);
-      FlowsyncStore.addActivity(`Project "${p.name}" deleted.`);
+      await CoTaskioStore.deleteProject(id);
+      CoTaskioStore.addActivity(`Project "${p.name}" deleted.`);
       toast('Project deleted.');
       _renderProjectsFromCache();
     } catch (err) {
@@ -577,7 +577,7 @@
   let editingTaskId = null;
 
   function populateProjectSelects() {
-    const projects = FlowsyncStore.getProjects();
+    const projects = CoTaskioStore.getProjects();
     const opts = projects.length
       ? projects.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('')
       : '<option value="">No projects yet</option>';
@@ -591,12 +591,12 @@
   function renderTasksFromCache() {
     populateProjectSelects();
     const filterPid = el('taskProjectFilter').value;
-    const allTasks  = FlowsyncStore.getTasks(filterPid || undefined);
+    const allTasks  = CoTaskioStore.getTasks(filterPid || undefined);
 
     function col(status, label, dot) {
       const items = allTasks.filter(t => t.status === status);
       const cards = items.map(t => {
-        const proj = FlowsyncStore.getProject(t.projectId);
+        const proj = CoTaskioStore.getProject(t.projectId);
         const od = isOverdue(t.dueDate) && t.status !== 'done';
         return `<div class="task-card" onclick="App.editTask('${t.id}')">
           <div class="task-card-title">${escHtml(t.title)}</div>
@@ -635,7 +635,7 @@
     el('tasksKanban').innerHTML = '<div style="padding:32px;color:var(--text-sub);font-size:13px;text-align:center;">Loading tasks…</div>';
     const filterPid = el('taskProjectFilter').value;
     try {
-      await FlowsyncStore.fetchTasks(filterPid || undefined);
+      await CoTaskioStore.fetchTasks(filterPid || undefined);
       renderTasksFromCache();
     } catch (err) {
       el('tasksKanban').innerHTML = `
@@ -654,9 +654,9 @@
     editingTaskId = id || null;
     populateProjectSelects();
     el('taskModalTitle').textContent = id ? 'Edit Task' : 'New Task';
-    const t = id ? FlowsyncStore.getTask(id) : null;
+    const t = id ? CoTaskioStore.getTask(id) : null;
     el('tTitle').value    = t ? t.title       : '';
-    el('tProject').value  = t ? (t.projectId||'')  : (FlowsyncStore.getProjects()[0]?.id || '');
+    el('tProject').value  = t ? (t.projectId||'')  : (CoTaskioStore.getProjects()[0]?.id || '');
     el('tStatus').value   = t ? t.status      : 'todo';
     el('tPriority').value = t ? t.priority    : 'medium';
     el('tDue').value      = t ? (t.dueDate||'')    : '';
@@ -676,8 +676,8 @@
     const saveBtn = el('saveTaskBtn');
     saveBtn.disabled = true;
     try {
-      await FlowsyncStore.saveTask(data);
-      FlowsyncStore.addActivity(`Task "${title}" ${editingTaskId ? 'updated' : 'created'}.`);
+      await CoTaskioStore.saveTask(data);
+      CoTaskioStore.addActivity(`Task "${title}" ${editingTaskId ? 'updated' : 'created'}.`);
       closeModal('taskModal');
       toast(editingTaskId ? 'Task updated.' : 'Task created.');
       renderTasksFromCache();
@@ -690,11 +690,11 @@
 
   App.editTask   = (id) => openTaskModal(id);
   App.deleteTask = async (id) => {
-    const t = FlowsyncStore.getTask(id);
+    const t = CoTaskioStore.getTask(id);
     if (!t) return;
     if (!confirm(`Delete task "${t.title}"?`)) return;
     try {
-      await FlowsyncStore.deleteTask(id);
+      await CoTaskioStore.deleteTask(id);
       toast('Task deleted.');
       renderTasksFromCache();
     } catch (err) {
@@ -707,10 +707,10 @@
     }
   };
   App.moveTask   = async (id, status) => {
-    const t = FlowsyncStore.getTask(id);
+    const t = CoTaskioStore.getTask(id);
     try {
-      await FlowsyncStore.updateTaskStatus(id, status);
-      FlowsyncStore.addActivity(`Task "${t?.title}" moved to ${statusLabel(status)}.`);
+      await CoTaskioStore.updateTaskStatus(id, status);
+      CoTaskioStore.addActivity(`Task "${t?.title}" moved to ${statusLabel(status)}.`);
       toast(`Moved to ${statusLabel(status)}.`);
       renderTasksFromCache();
     } catch (err) {
@@ -728,7 +728,7 @@
      TIMELINE
   ══════════════════════════════════════════ */
   function renderTimeline() {
-    const tasks = FlowsyncStore.getTasks()
+    const tasks = CoTaskioStore.getTasks()
       .filter(t => t.deadline)
       .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
 
@@ -752,7 +752,7 @@
       const isLast = gi === arr.length - 1;
 
       return items.map((t, ti) => {
-        const proj   = FlowsyncStore.getProject(t.projectId);
+        const proj   = CoTaskioStore.getProject(t.projectId);
         const od     = isOverdue(t.dueDate) && t.status !== 'done';
         const cirCls = t.status === 'done' ? 'done' : od ? 'overdue' : '';
         const stCls  = od && t.status !== 'done' ? 'overdue' : t.status;
@@ -782,7 +782,7 @@
      REPORTS
   ══════════════════════════════════════════ */
   function renderReports() {
-    const gs = FlowsyncStore.getStats();
+    const gs = CoTaskioStore.getStats();
     el('reportStats').innerHTML = `
       <div class="stat-card accent-violet"><div class="stat-card-label">Total Tasks</div><div class="stat-card-value">${gs.total}</div><div class="stat-card-meta">all projects</div></div>
       <div class="stat-card accent-green"><div class="stat-card-label">Completed</div><div class="stat-card-value">${gs.done}</div><div class="stat-card-meta">${gs.pct}% done</div></div>
@@ -791,9 +791,9 @@
     `;
 
     // Per-project bars
-    const projects = FlowsyncStore.getProjects();
+    const projects = CoTaskioStore.getProjects();
     el('reportBars').innerHTML = projects.length ? projects.map(p => {
-      const ps = FlowsyncStore.getStats(p.id);
+      const ps = CoTaskioStore.getStats(p.id);
       return `
         <div class="report-bar-row">
           <div class="report-bar-label" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
@@ -821,7 +821,7 @@
     const workspaceName = user.name.split(' ')[0] + "'s Workspace";
     el('teamWorkspaceName').textContent = 'Workspace: ' + workspaceName;
 
-    const members = FlowsyncStore.getTeam();
+    const members = CoTaskioStore.getTeam();
     if (!members.length) {
       el('teamGrid').innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No team members</h3><p>Invite your first team member to get started.</p></div>`;
       return;
@@ -853,9 +853,9 @@
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       el('inviteEmail').focus(); toast('Please enter a valid email address.', 'error'); return;
     }
-    const m = FlowsyncStore.addMember({ name, email, role: el('inviteRole').value });
+    const m = CoTaskioStore.addMember({ name, email, role: el('inviteRole').value });
     if (!m) { toast('That email is already in the team.', 'error'); return; }
-    FlowsyncStore.addActivity(`${name || email} was invited to the workspace.`);
+    CoTaskioStore.addActivity(`${name || email} was invited to the workspace.`);
     closeModal('inviteModal');
     el('inviteName').value = ''; el('inviteEmail').value = '';
     toast('Team member added successfully.');
@@ -864,7 +864,7 @@
 
   App.removeMember = (id, name) => {
     if (!confirm(`Remove ${name} from the team?`)) return;
-    FlowsyncStore.removeMember(id);
+    CoTaskioStore.removeMember(id);
     toast('Team member removed.');
     renderTeam();
   };

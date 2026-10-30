@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── Auth guard: redirect unauthenticated users ── */
-  if (!FlowsyncAuth.isSignedIn()) {
+  if (!CoTaskioAuth.isSignedIn()) {
     window.location.replace('signin.html');
     return;
   }
@@ -15,7 +15,7 @@
      SHARED NAVBAR INIT (same pattern as app.js)
   ────────────────────────────────────────────── */
   function populateNavbar() {
-    const user = FlowsyncAuth.getUser();
+    const user = CoTaskioAuth.getUser();
     if (!user) return;
 
     const navAuthOut  = document.getElementById('navAuthOut');
@@ -89,7 +89,7 @@
   /* ── Logout (desktop dropdown + sidebar + mobile) ── */
   function initLogout() {
     function doLogout() {
-      FlowsyncAuth.signOut();
+      CoTaskioAuth.signOut();
       window.location.href = 'index.html';
     }
     ['logoutBtn', 'sidebarLogoutBtn', 'mobileLogoutBtn'].forEach(id => {
@@ -125,7 +125,7 @@
 
   /* Populate the view-mode card from stored user */
   function renderViewMode() {
-    const user = FlowsyncAuth.getUser();
+    const user = CoTaskioAuth.getUser();
     if (!user) return;
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -145,7 +145,7 @@
 
   /* Populate the edit-mode form from stored user */
   function renderEditMode() {
-    const user = FlowsyncAuth.getUser();
+    const user = CoTaskioAuth.getUser();
     if (!user) return;
     if (nameInput) nameInput.value = user.name;
     const emailDisplay = document.getElementById('editEmailDisplay');
@@ -211,7 +211,7 @@
       // Simulate async save (250ms feels snappy but intentional)
       setTimeout(() => {
         // Persist to localStorage
-        FlowsyncAuth.updateUser({ name: newName });
+        CoTaskioAuth.updateUser({ name: newName });
 
         // Re-enable button
         saveBtn.disabled = false;
@@ -232,7 +232,7 @@
   if (nameInput) {
     nameInput.addEventListener('input', () => {
       const val = nameInput.value.trim();
-      const initials = val ? FlowsyncAuth.getInitials(val) : '?';
+      const initials = val ? CoTaskioAuth.getInitials(val) : '?';
       const el = document.getElementById('editAvatar');
       if (el) el.textContent = initials;
       const nameEl = document.getElementById('editCurrentName');
@@ -254,12 +254,12 @@
   renderViewMode();   // Start in view mode
 
   // Init theme engine and inject toggle
-  if (typeof FlowsyncTheme !== 'undefined') {
-    FlowsyncTheme.init();
+  if (typeof CoTaskioTheme !== 'undefined') {
+    CoTaskioTheme.init();
     const navThemeToggle = document.getElementById('navThemeToggle');
-    if (navThemeToggle) FlowsyncTheme.injectToggle(navThemeToggle);
+    if (navThemeToggle) CoTaskioTheme.injectToggle(navThemeToggle);
     const mobileThemeRow = document.getElementById('mobileThemeRow');
-    if (mobileThemeRow) FlowsyncTheme.injectToggle(mobileThemeRow);
+    if (mobileThemeRow) CoTaskioTheme.injectToggle(mobileThemeRow);
   }
 
 })();

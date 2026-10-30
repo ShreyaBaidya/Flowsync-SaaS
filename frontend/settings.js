@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── Auth guard ── */
-  if (!FlowsyncAuth.isSignedIn()) {
+  if (!CoTaskioAuth.isSignedIn()) {
     window.location.replace('signin.html');
     return;
   }
@@ -25,7 +25,7 @@
 
   /* ── Populate navbar ── */
   function populateNavbar() {
-    const user = FlowsyncAuth.getUser();
+    const user = CoTaskioAuth.getUser();
     if (!user) return;
     const navAuthOut = document.getElementById('navAuthOut');
     const navAuthIn  = document.getElementById('navAuthIn');
@@ -90,7 +90,7 @@
 
   /* ── Logout ── */
   function initLogout() {
-    function doLogout() { FlowsyncAuth.signOut(); window.location.href = 'index.html'; }
+    function doLogout() { CoTaskioAuth.signOut(); window.location.href = 'index.html'; }
     ['logoutBtn', 'sidebarLogoutBtn', 'mobileLogoutBtn'].forEach(id => {
       const btn = document.getElementById(id);
       if (btn) btn.addEventListener('click', doLogout);
@@ -110,7 +110,7 @@
       const chosen = chip.dataset.theme;
       if (chosen === 'system') {
         // Remove saved preference so system preference takes over dynamically
-        localStorage.removeItem('flowsync-theme');
+        localStorage.removeItem('cotaskio-theme');
         const sys = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
         // Apply visually without re-saving to localStorage
         document.documentElement.setAttribute('data-theme', sys);
@@ -124,7 +124,7 @@
         });
         syncThemeChips('system');
       } else {
-        if (typeof FlowsyncTheme !== 'undefined') FlowsyncTheme.apply(chosen);
+        if (typeof CoTaskioTheme !== 'undefined') CoTaskioTheme.apply(chosen);
         syncThemeChips(chosen);
       }
       showToast(`Theme set to "${chosen}".`, 'success');
@@ -143,7 +143,7 @@
   const signOutAllBtn = document.getElementById('signOutAllBtn');
   if (signOutAllBtn) {
     signOutAllBtn.addEventListener('click', () => {
-      FlowsyncAuth.signOut();
+      CoTaskioAuth.signOut();
       window.location.href = 'signin.html';
     });
   }
@@ -153,7 +153,7 @@
     deleteAccountBtn.addEventListener('click', () => {
       const confirmed = confirm('This will permanently delete your account and all data. This action cannot be undone.\n\nContinue?');
       if (confirmed) {
-        FlowsyncAuth.signOut();
+        CoTaskioAuth.signOut();
         showToast('Account deleted successfully.', 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 1800);
       }
@@ -167,14 +167,14 @@
   initLogout();
 
   // Init theme engine and inject toggle
-  if (typeof FlowsyncTheme !== 'undefined') {
-    FlowsyncTheme.init();
+  if (typeof CoTaskioTheme !== 'undefined') {
+    CoTaskioTheme.init();
     const navThemeToggle = document.getElementById('navThemeToggle');
-    if (navThemeToggle) FlowsyncTheme.injectToggle(navThemeToggle);
+    if (navThemeToggle) CoTaskioTheme.injectToggle(navThemeToggle);
     const mobileThemeRow = document.getElementById('mobileThemeRow');
-    if (mobileThemeRow) FlowsyncTheme.injectToggle(mobileThemeRow);
+    if (mobileThemeRow) CoTaskioTheme.injectToggle(mobileThemeRow);
     // Sync chips with current theme (or 'system' if no saved pref)
-    const saved = FlowsyncTheme.getStored();
+    const saved = CoTaskioTheme.getStored();
     document.querySelectorAll('.theme-chip').forEach(c => {
       c.classList.toggle('active', saved ? c.dataset.theme === saved : c.dataset.theme === 'system');
     });

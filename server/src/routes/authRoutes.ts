@@ -1,24 +1,33 @@
+/**
+ * authRoutes.ts
+ *
+ * POST   /api/v1/auth/signup    — register new user
+ * POST   /api/v1/auth/signin    — authenticate, receive access token + cookie
+ * POST   /api/v1/auth/signout   — revoke refresh token, clear cookie
+ * POST   /api/v1/auth/refresh   — exchange refresh cookie for new access token
+ * GET    /api/v1/auth/me        — return current user (protected)
+ */
+
 import { Router } from 'express';
+import { authLimiter } from '../middleware/rateLimiter';
 import { authenticate } from '../middleware/authenticate';
 import {
-  signup,
-  signin,
-  refresh,
-  logout,
-  logoutAll,
+  signUp,
+  signIn,
+  signOut,
+  refreshTokens,
   getMe,
 } from '../controllers/authController';
 
 const router = Router();
 
-// ── Public ────────────────────────────────────────────────────
-router.post('/signup',     signup);
-router.post('/signin',     signin);
-router.post('/refresh',    refresh);
+// Apply the strict rate limiter to all auth mutation endpoints
+router.post('/signup',  authLimiter, signUp);
+router.post('/signin',  authLimiter, signIn);
+router.post('/signout', signOut);           // No auth required to sign out
+router.post('/refresh', authLimiter, refreshTokens);
 
-// ── Protected ─────────────────────────────────────────────────
-router.post('/logout',     authenticate, logout);
-router.post('/logout-all', authenticate, logoutAll);
-router.get('/me',          authenticate, getMe);
+// Protected — requires valid access token
+router.get('/me', authenticate, getMe);
 
 export default router;

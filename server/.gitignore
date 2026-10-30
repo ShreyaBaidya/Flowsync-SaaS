@@ -1,48 +1,27 @@
-# ── Dependencies ─────────────────────────────────────────────
+# Dependencies
 node_modules/
 
-# ── Build output ──────────────────────────────────────────────
+# Build output
 dist/
 
-# ── Environment variables ─────────────────────────────────────
+# Environment variables and secrets
 .env
 .env.local
 .env.*.local
 
-# ── Logs ──────────────────────────────────────────────────────
+# Logs
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ── Runtime data ──────────────────────────────────────────────
+# Runtime data
 pids/
 *.pid
 *.seed
 *.pid.lock
 
-# ── OS files ──────────────────────────────────────────────────
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
 Thumbs.db
-ehthumbs.db
-
-# ── Editor ────────────────────────────────────────────────────
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# ── TypeScript cache ──────────────────────────────────────────
-*.tsbuildinfo
-
-# ── Test coverage ─────────────────────────────────────────────
-coverage/
-.nyc_output/

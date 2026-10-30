@@ -52,6 +52,11 @@ body.app-page {
   font-weight: 700;
   color: var(--white);
 }
+/* ── Sidebar logo image size override ── */
+.sidebar-logo-img {
+  width: 36px;
+  height: 36px;
+}
 
 /* ── Sidebar nav ── */
 .sidebar-nav-section { padding: 12px 10px 0; flex: 1; }

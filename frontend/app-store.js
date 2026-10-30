@@ -1,17 +1,17 @@
 /* ============================================================
-   TASKLUNE — App Data Store
+   CoTaskio — App Data Store
    localStorage-backed store for projects, tasks, and team.
    Seeded with realistic demo data on first load.
    ============================================================ */
 
-const FlowsyncStore = (function () {
+const CoTaskioStore = (function () {
   'use strict';
 
   const KEYS = {
-    projects: 'flowsync_projects',
-    tasks:    'flowsync_tasks',
-    team:     'flowsync_team',
-    activity: 'flowsync_activity'
+    projects: 'cotaskio_projects',
+    tasks:    'cotaskio_tasks',
+    team:     'cotaskio_team',
+    activity: 'cotaskio_activity'
   };
 
   /* ── helpers ── */
@@ -401,7 +401,7 @@ const FlowsyncStore = (function () {
     if (list.find(m => m.email.toLowerCase() === data.email.toLowerCase())) return null;
     const member = { id: uid(), name: data.name || data.email.split('@')[0],
       email: data.email, role: data.role || 'Member',
-      avatar: FlowsyncAuth.getInitials(data.name || data.email), addedAt: Date.now() };
+      avatar: CoTaskioAuth.getInitials(data.name || data.email), addedAt: Date.now() };
     list.push(member);
     save(KEYS.team, list);
     return member;

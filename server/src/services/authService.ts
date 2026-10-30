@@ -1,226 +1,193 @@
-import { User } from '../models/User';
+/**
+ * authService.ts
+ * Pure business logic for authentication.
+ * Controllers call these functions — no Express types here.
+ *
+ * Responsibilities:
+ *  - Register a new user
+ *  - Authenticate credentials and issue tokens
+ *  - Rotate refresh tokens
+ *  - Revoke a single refresh token (logout)
+ *  - Revoke all tokens for a user (sign out all devices)
+ */
+
+import { User, IUser } from '../models/User';
 import { RefreshToken } from '../models/RefreshToken';
 import { ApiError } from '../utils/ApiError';
-import { env } from '../config/env';
 import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-  type TokenUser,
+  signAccessToken,
+  generateRefreshTokenString,
+  expiryFromDuration,
 } from '../utils/token';
-import type { SafeUser } from '../types/user.types';
+import { env } from '../config/env';
+import { SignUpBody, SignInBody, SafeUser, UserPlan } from '../types/auth.types';
 
-// ── Return shapes ─────────────────────────────────────────────
+// ── Returned by signUp and signIn ─────────────────────────────
 
 export interface AuthResult {
   user:         SafeUser;
   accessToken:  string;
-  refreshToken: string;
+  refreshToken: string;   // opaque string → goes in cookie
 }
 
-export interface LogoutResult {
-  success: boolean;
-  message: string;
-}
+// ── Register ─────────────────────────────────────────────────
 
-// ── Context passed in from controllers ───────────────────────
-// Kept as a plain object — no Express types here.
+export async function register(body: SignUpBody): Promise<AuthResult> {
+  const { name, email, password, plan = 'starter' } = body;
 
-export interface RequestContext {
-  userAgent: string;
-  ipAddress: string;
-}
-
-// ── Private helpers ───────────────────────────────────────────
-
-/**
- * Parse a duration string (e.g. "7d", "15m") into a future Date.
- */
-function parseDurationToDate(duration: string): Date {
-  const unit  = duration.slice(-1);
-  const value = parseInt(duration.slice(0, -1), 10);
-
-  const msMap: Record<string, number> = {
-    s: 1_000,
-    m: 60_000,
-    h: 3_600_000,
-    d: 86_400_000,
-  };
-
-  const factor = msMap[unit];
-  if (!factor) throw new Error(`Invalid duration string: "${duration}"`);
-
-  return new Date(Date.now() + value * factor);
-}
-
-/**
- * Build the minimal TokenUser required by the token utilities.
- */
-function toTokenUser(user: InstanceType<typeof User>): TokenUser {
-  return {
-    id:           user._id.toString(),
-    email:        user.email,
-    role:         user.role,
-    plan:         user.plan,
-    tokenVersion: 0,
-  };
-}
-
-/**
- * Generate an access + refresh token pair and persist the
- * hashed refresh token to the database.
- */
-async function issueTokenPair(
-  user: InstanceType<typeof User>,
-  ctx: RequestContext,
-): Promise<Pick<AuthResult, 'accessToken' | 'refreshToken'>> {
-  const tokenUser    = toTokenUser(user);
-  const accessToken  = generateAccessToken(tokenUser);
-  const refreshToken = generateRefreshToken(tokenUser);
-
-  await RefreshToken.create({
-    user:        user._id,
-    hashedToken: RefreshToken.hashToken(refreshToken),
-    expiresAt:   parseDurationToDate(env.REFRESH_TOKEN_EXPIRES_IN),
-    lastUsedAt:  new Date(),
-    userAgent:   ctx.userAgent,
-    ipAddress:   ctx.ipAddress,
-  });
-
-  return { accessToken, refreshToken };
-}
-
-// ── register() ───────────────────────────────────────────────
-
-export interface RegisterInput {
-  name:     string;
-  email:    string;
-  password: string;
-}
-
-export async function register(
-  input: RegisterInput,
-  ctx: RequestContext,
-): Promise<AuthResult> {
-  const { name, email, password } = input;
-
+  // 1. Prevent duplicate accounts
   const existing = await User.findOne({ email: email.toLowerCase().trim() });
   if (existing) {
-    throw ApiError.conflict('An account with this email already exists');
+    throw ApiError.conflict('An account with this email already exists.');
   }
 
-  // pre-save hook on User model hashes the password automatically
-  const user = await User.create({ name: name.trim(), email, password });
+  // 2. Determine trialStartedAt for pro_trial plans.
+  //    Accept the client-supplied ISO string if it parses to a valid date;
+  //    otherwise fall back to the current server time.
+  let trialStartedAt: Date | undefined;
+  if (plan === 'pro_trial') {
+    if (body.trialStartedAt) {
+      const parsed = new Date(body.trialStartedAt);
+      trialStartedAt = isNaN(parsed.getTime()) ? new Date() : parsed;
+    } else {
+      trialStartedAt = new Date();
+    }
+  }
 
-  const { accessToken, refreshToken } = await issueTokenPair(user, ctx);
+  // 3. Create user — the pre-save hook hashes the password
+  const user = new User({
+    name:     name.trim(),
+    email:    email.toLowerCase().trim(),
+    password: password,   // Hook replaces this with bcrypt hash
+    plan,
+    ...(trialStartedAt !== undefined && { trialStartedAt }),
+  });
 
-  return { user: user.toSafeObject(), accessToken, refreshToken };
+  await user.save();
+
+  // 4. Issue tokens
+  return issueTokens(user);
 }
 
-// ── login() ──────────────────────────────────────────────────
+// ── Login ────────────────────────────────────────────────────
 
-export interface LoginInput {
-  email:    string;
-  password: string;
-}
+export async function login(body: SignInBody): Promise<AuthResult> {
+  const { email, password } = body;
 
-export async function login(
-  input: LoginInput,
-  ctx: RequestContext,
-): Promise<AuthResult> {
+  // 1. Find user — explicitly select password (excluded by default)
+  const user = await User.findOne({
+    email: email.toLowerCase().trim(),
+  }).select('+password');
 
-  console.log("LOGIN INPUT:", input);
-
-  const { email, password } = input;
-
-  console.log("EMAIL:", email);
-  console.log("PASSWORD:", password);
-
-  // select: false on password field requires explicit opt-in
-  const user = await User
-    .findOne({ email: email.toLowerCase().trim() })
-    .select('+password');
-
+  // Use constant-time comparison even for "not found" to prevent timing attacks
   if (!user) {
-    throw ApiError.unauthorized('Invalid email or password');
+    await simulateHashDelay();
+    throw ApiError.unauthorized('Invalid email or password.');
   }
 
+  // 2. Verify password
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    throw ApiError.unauthorized('Invalid email or password');
+    throw ApiError.unauthorized('Invalid email or password.');
   }
 
-  const { accessToken, refreshToken } = await issueTokenPair(user, ctx);
-
-  return {
-    user: user.toSafeObject(),
-    accessToken,
-    refreshToken,
-  };
+  // 3. Issue tokens
+  return issueTokens(user);
 }
 
-// ── refresh() ────────────────────────────────────────────────
+// ── Refresh ───────────────────────────────────────────────────
 
-export async function refresh(
-  rawToken: string,
-  ctx: RequestContext,
-): Promise<AuthResult> {
-  // 1. Verify the JWT signature and expiry
-  const payload = verifyRefreshToken(rawToken);
+export async function refresh(cookieToken: string): Promise<AuthResult> {
+  // 1. Find the stored token record (validates existence + not revoked)
+  const stored = await RefreshToken.findOne({
+    token:     cookieToken,
+    isRevoked: false,
+  });
 
-  // 2. Look up the hashed token in the database
-  const stored = await RefreshToken.findByRawToken(rawToken);
   if (!stored) {
-    // Token not found — it may have been used already (replay attack)
-    // or was manually revoked.  Invalidate all tokens for this user
-    // as a precaution (refresh token reuse detection).
-    await RefreshToken.deleteMany({ user: payload.sub });
-    throw ApiError.unauthorized('Refresh token has been revoked');
+    throw ApiError.unauthorized('Invalid or expired refresh token.');
   }
 
-  // 3. Load the user
-  const user = await User.findById(stored.user);
+  // 2. Check expiry (belt-and-suspenders; TTL index handles cleanup)
+  if (stored.expiresAt < new Date()) {
+    await stored.deleteOne();
+    throw ApiError.unauthorized('Refresh token has expired. Please sign in again.');
+  }
+
+  // 3. Load user
+  const user = await User.findById(stored.userId);
   if (!user) {
     await stored.deleteOne();
-    throw ApiError.unauthorized('User not found');
+    throw ApiError.unauthorized('User not found.');
   }
 
-  // 4. Rotate — delete the consumed token before issuing a new one
+  // 4. Revoke the used token (rotation — a token can only be used once)
   await stored.deleteOne();
 
-  // 5. Issue a fresh pair and store the new hashed refresh token
-  const { accessToken, refreshToken: newRefreshToken } = await issueTokenPair(
-    user,
-    ctx,
-  );
-
-  return { user: user.toSafeObject(), accessToken, refreshToken: newRefreshToken };
+  // 5. Issue fresh tokens
+  return issueTokens(user);
 }
 
-// ── logout() ─────────────────────────────────────────────────
+// ── Logout (single device) ────────────────────────────────────
 
-export async function logout(rawToken: string): Promise<LogoutResult> {
-  // Delete only the token belonging to this device/session
-  const hashed = RefreshToken.hashToken(rawToken);
-  await RefreshToken.deleteOne({ hashedToken: hashed });
-
-  return { success: true, message: 'Logged out successfully' };
+export async function logout(cookieToken: string): Promise<void> {
+  // Silently succeeds even if token is not found (already expired or revoked)
+  await RefreshToken.deleteOne({ token: cookieToken });
 }
 
-// ── logoutAll() ──────────────────────────────────────────────
+// ── Logout all devices ────────────────────────────────────────
 
-export async function logoutAll(userId: string): Promise<LogoutResult> {
-  // Remove every active session for this user across all devices
-  await RefreshToken.deleteMany({ user: userId });
-
-  return { success: true, message: 'Logged out from all devices' };
+export async function logoutAll(userId: string): Promise<void> {
+  await RefreshToken.deleteMany({ userId });
 }
 
-// ── getMe() ──────────────────────────────────────────────────
+// ── Get current user (for /auth/me) ──────────────────────────
 
 export async function getMe(userId: string): Promise<SafeUser> {
   const user = await User.findById(userId);
-  if (!user) throw ApiError.notFound('User not found');
-
+  if (!user) {
+    throw ApiError.notFound('User not found.');
+  }
   return user.toSafeObject();
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+
+/**
+ * Create access token + refresh token pair and persist the refresh token.
+ */
+async function issueTokens(user: IUser): Promise<AuthResult> {
+  // Access token (JWT)
+  const accessToken = signAccessToken({
+    sub:   (user._id as { toString(): string }).toString(),
+    email: user.email,
+    name:  user.name,
+    plan:  user.plan as UserPlan,
+  });
+
+  // Refresh token — opaque random string stored in DB
+  const rawToken    = generateRefreshTokenString();
+  const expiresAt   = expiryFromDuration(env.JWT_REFRESH_EXPIRES_IN);
+
+  await RefreshToken.create({
+    userId:    user._id,
+    token:     rawToken,
+    expiresAt,
+  });
+
+  return {
+    user:         user.toSafeObject(),
+    accessToken,
+    refreshToken: rawToken,
+  };
+}
+
+/**
+ * Spend ~100ms to resist timing attacks on the "user not found" path.
+ * Without this, an attacker can detect which emails are registered
+ * by measuring the response time difference.
+ */
+async function simulateHashDelay(): Promise<void> {
+  const { default: bcrypt } = await import('bcryptjs');
+  await bcrypt.compare('dummy', '$2b$12$dummyhashpadding000000000000000000000000000000000000000');
 }

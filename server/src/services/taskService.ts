@@ -1,127 +1,144 @@
+/**
+ * taskService.ts
+ * Business logic for the Task module.
+ * Controllers call these functions — no Express types here.
+ *
+ * Access control:
+ *  - Tasks are scoped to a project.
+ *  - Any project owner or project member may create, read, and update tasks.
+ *  - Only the task creator or the project owner may delete a task.
+ */
+
 import { Types } from 'mongoose';
-import { Task, ITask, SafeTask } from '../models/Task';
-import { Project, IProject } from '../models/Project';
+import { Task, ITask } from '../models/Task';
+import { Project } from '../models/Project';
 import { ApiError } from '../utils/ApiError';
+import {
+  CreateTaskBody,
+  UpdateTaskBody,
+  TaskQueryParams,
+  SafeTask,
+} from '../types/task.types';
 
-// ── Input shapes ──────────────────────────────────────────────
+// ── Pagination result shape ───────────────────────────────────
 
-export interface CreateTaskInput {
-  title:        string;
-  description?: string;
-  status?:      string;
-  priority?:    string;
-  assignee?:    string | null;
-  dueDate?:     string | null;
-  tags?:        string[];
-  order?:       number;
-}
-
-export type UpdateTaskInput = Partial<CreateTaskInput>;
-
-export interface TaskListResult {
+export interface PaginatedTasks {
   tasks:      SafeTask[];
   total:      number;
   page:       number;
   totalPages: number;
+  limit:      number;
 }
 
-export interface TaskQuery {
-  page?:     string;
-  limit?:    string;
-  status?:   string;
-  priority?: string;
-  search?:   string;
-  assignee?: string;
-}
-
-// ── Access guard ──────────────────────────────────────────────
-
-async function assertProjectAccess(
-  projectId: string,
-  userId: string,
-): Promise<IProject> {
-  const project = await Project.findById(projectId);
-  if (!project) throw ApiError.notFound('Project not found');
-
-  const isOwner  = project.owner.toString() === userId;
-  const isMember = project.members.some((m) => m.toString() === userId);
-
-  if (!isOwner && !isMember) {
-    throw ApiError.forbidden('You do not have access to this project');
-  }
-
-  return project;
-}
-
-// ── Service functions ─────────────────────────────────────────
+// ── Create ────────────────────────────────────────────────────
 
 export async function createTask(
   projectId: string,
   userId: string,
-  input: CreateTaskInput,
+  body: CreateTaskBody,
 ): Promise<SafeTask> {
   await assertProjectAccess(projectId, userId);
 
-  // Place new task at end by default
-  let order = input.order ?? 0;
-  if (input.order === undefined) {
+  // Place new task at the end of the list by default
+  let order = body.order ?? 0;
+  if (body.order === undefined) {
     const last = await Task.findOne({ project: new Types.ObjectId(projectId) })
       .sort({ order: -1 })
       .lean<ITask>();
     order = last ? last.order + 1 : 0;
   }
 
-  const task = await Task.create({
+  const task = new Task({
     project:     new Types.ObjectId(projectId),
     createdBy:   new Types.ObjectId(userId),
-    title:       input.title.trim(),
-    description: input.description?.trim() ?? '',
-    status:      input.status   ?? 'todo',
-    priority:    input.priority ?? 'medium',
-    assignee:    input.assignee ? new Types.ObjectId(input.assignee) : null,
-    dueDate:     input.dueDate  ? new Date(input.dueDate) : null,
-    tags:        input.tags ?? [],
+    title:       body.title.trim(),
+    description: body.description?.trim() ?? '',
+    status:      body.status   ?? 'todo',
+    priority:    body.priority ?? 'medium',
+    assignee:    body.assignee ? new Types.ObjectId(body.assignee) : null,
+    dueDate:     body.dueDate  ? new Date(body.dueDate) : null,
+    tags:        body.tags ?? [],
     order,
   });
 
+  await task.save();
   return task.toSafeObject();
 }
+
+// ── List (with pagination, search, filter, sort) ─────────────
 
 export async function listTasks(
   projectId: string,
   userId: string,
-  query: TaskQuery,
-): Promise<TaskListResult> {
+  query: TaskQueryParams,
+): Promise<PaginatedTasks> {
   await assertProjectAccess(projectId, userId);
 
   const page  = Math.max(1, parseInt(query.page  ?? '1',  10));
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? '20', 10)));
   const skip  = (page - 1) * limit;
 
+  // ── Build filter ─────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {
     project: new Types.ObjectId(projectId),
   };
 
-  if (query.status)   filter['status']   = query.status;
-  if (query.priority) filter['priority'] = query.priority;
-  if (query.assignee) filter['assignee'] = new Types.ObjectId(query.assignee);
-  if (query.search)   filter['title']    = { $regex: query.search.trim(), $options: 'i' };
+  if (query.status) {
+    const statuses = query.status.split(',').map(s => s.trim()).filter(Boolean);
+    filter.status = { $in: statuses };
+  }
 
-  const [docs, total] = await Promise.all([
-    Task.find(filter).sort({ order: 1, createdAt: -1 }).skip(skip).limit(limit),
+  if (query.priority) {
+    const priorities = query.priority.split(',').map(p => p.trim()).filter(Boolean);
+    filter.priority = { $in: priorities };
+  }
+
+  if (query.assignee) {
+    filter.assignee = new Types.ObjectId(query.assignee);
+  }
+
+  if (query.search) {
+    // Case-insensitive title search (regex — consistent with projectService)
+    filter.title = { $regex: query.search.trim(), $options: 'i' };
+  }
+
+  // ── Build sort ───────────────────────────────────────────
+  // Default: manual order ascending
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sortMap: Record<string, any> = {
+    'order':      { order: 1      },
+    '-order':     { order: -1     },
+    'createdAt':  { createdAt: 1  },
+    '-createdAt': { createdAt: -1 },
+    'updatedAt':  { updatedAt: 1  },
+    '-updatedAt': { updatedAt: -1 },
+    'dueDate':    { dueDate: 1    },
+    '-dueDate':   { dueDate: -1   },
+    'priority':   { priority: 1   },
+    '-priority':  { priority: -1  },
+    'title':      { title: 1      },
+    '-title':     { title: -1     },
+  };
+  const sort = sortMap[query.sort ?? 'order'] ?? { order: 1 };
+
+  const [tasks, total] = await Promise.all([
+    Task.find(filter).sort(sort).skip(skip).limit(limit).lean<ITask[]>(),
     Task.countDocuments(filter),
   ]);
 
   return {
-    tasks:      docs.map((t) => t.toSafeObject()),
+    tasks:      tasks.map(t => leanToSafe(t)),
     total,
     page,
     totalPages: Math.ceil(total / limit),
+    limit,
   };
 }
 
-export async function getTask(
+// ── Get single ───────────────────────────────────────────────
+
+export async function getTaskById(
   projectId: string,
   taskId: string,
   userId: string,
@@ -133,15 +150,17 @@ export async function getTask(
     project: new Types.ObjectId(projectId),
   });
 
-  if (!task) throw ApiError.notFound('Task not found');
+  if (!task) throw ApiError.notFound('Task not found.');
   return task.toSafeObject();
 }
+
+// ── Update ────────────────────────────────────────────────────
 
 export async function updateTask(
   projectId: string,
   taskId: string,
   userId: string,
-  input: UpdateTaskInput,
+  body: UpdateTaskBody,
 ): Promise<SafeTask> {
   await assertProjectAccess(projectId, userId);
 
@@ -150,46 +169,97 @@ export async function updateTask(
     project: new Types.ObjectId(projectId),
   });
 
-  if (!task) throw ApiError.notFound('Task not found');
+  if (!task) throw ApiError.notFound('Task not found.');
 
-  if (input.title       !== undefined) task.title       = input.title.trim();
-  if (input.description !== undefined) task.description = input.description.trim();
-  if (input.status      !== undefined) task.status      = input.status as ITask['status'];
-  if (input.priority    !== undefined) task.priority    = input.priority as ITask['priority'];
-  if (input.tags        !== undefined) task.tags        = input.tags;
-  if (input.order       !== undefined) task.order       = input.order;
-  if (input.assignee !== undefined) {
-    task.assignee = input.assignee ? new Types.ObjectId(input.assignee) : null;
+  // Any project member may update tasks
+  if (body.title       !== undefined) task.title       = body.title.trim();
+  if (body.description !== undefined) task.description = body.description.trim();
+  if (body.status      !== undefined) task.status      = body.status;
+  if (body.priority    !== undefined) task.priority    = body.priority;
+  if (body.tags        !== undefined) task.tags        = body.tags;
+  if (body.order       !== undefined) task.order       = body.order;
+  if (body.assignee !== undefined) {
+    task.assignee = body.assignee ? new Types.ObjectId(body.assignee) : null;
   }
-  if (input.dueDate !== undefined) {
-    task.dueDate = input.dueDate ? new Date(input.dueDate) : null;
+  if (body.dueDate !== undefined) {
+    task.dueDate = body.dueDate ? new Date(body.dueDate) : null;
   }
 
   await task.save();
   return task.toSafeObject();
 }
 
+// ── Delete ────────────────────────────────────────────────────
+
 export async function deleteTask(
   projectId: string,
   taskId: string,
   userId: string,
 ): Promise<void> {
-  const project = await assertProjectAccess(projectId, userId);
+  const project = await Project.findById(projectId);
+  if (!project) throw ApiError.notFound('Project not found.');
+
+  assertMemberOrOwner(project, userId);
 
   const task = await Task.findOne({
     _id:     new Types.ObjectId(taskId),
     project: new Types.ObjectId(projectId),
   });
 
-  if (!task) throw ApiError.notFound('Task not found');
+  if (!task) throw ApiError.notFound('Task not found.');
 
-  // Only task creator or project owner may delete
-  const isOwner   = project.owner.toString() === userId;
-  const isCreator = task.createdBy.toString() === userId;
+  // Only the task creator or the project owner may delete
+  const isProjectOwner  = project.owner.toString() === userId;
+  const isTaskCreator   = task.createdBy.toString() === userId;
 
-  if (!isOwner && !isCreator) {
-    throw ApiError.forbidden('Only the task creator or project owner can delete this task');
+  if (!isProjectOwner && !isTaskCreator) {
+    throw ApiError.forbidden(
+      'Only the task creator or project owner can delete this task.',
+    );
   }
 
   await task.deleteOne();
+}
+
+// ── Authorization helpers ─────────────────────────────────────
+
+/**
+ * Verify the project exists and the user is the owner or a member.
+ * Returns the project document for callers that need it.
+ */
+async function assertProjectAccess(projectId: string, userId: string) {
+  const project = await Project.findById(projectId);
+  if (!project) throw ApiError.notFound('Project not found.');
+  assertMemberOrOwner(project, userId);
+  return project;
+}
+
+import { IProject } from '../models/Project';
+
+function assertMemberOrOwner(project: IProject, userId: string): void {
+  const isOwner  = project.owner.toString() === userId;
+  const isMember = project.members.some(m => m.toString() === userId);
+  if (!isOwner && !isMember) {
+    throw ApiError.forbidden('You do not have access to this project.');
+  }
+}
+
+// ── Lean document → SafeTask ──────────────────────────────────
+
+function leanToSafe(t: ITask): SafeTask {
+  return {
+    id:          (t._id as { toString(): string }).toString(),
+    project:     t.project.toString(),
+    createdBy:   t.createdBy.toString(),
+    title:       t.title,
+    description: t.description,
+    status:      t.status,
+    priority:    t.priority,
+    assignee:    t.assignee ? t.assignee.toString() : null,
+    dueDate:     t.dueDate  ? new Date(t.dueDate).toISOString()  : null,
+    tags:        t.tags ?? [],
+    order:       t.order,
+    createdAt:   new Date(t.createdAt).toISOString(),
+    updatedAt:   new Date(t.updatedAt).toISOString(),
+  };
 }

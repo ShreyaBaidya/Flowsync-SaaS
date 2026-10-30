@@ -1,5 +1,5 @@
 /* ============================================================
-   FLOWSYNC — Theme System
+   COTASKIO — Theme System
    Dark is the default (defined in styles.css :root).
    This file adds the light-mode override layer and the
    theme-toggle button component.
@@ -172,13 +172,6 @@ svg *,
 [data-theme="light"] .mockup-progress-fill { background: linear-gradient(90deg, #2A9D8F, #1F7A70); }
 [data-theme="light"] .mockup-pct { color: var(--violet); }
 
-/* ── Logos bar ── */
-[data-theme="light"] .logos-bar {
-  border-top-color: var(--border);
-  border-bottom-color: var(--border);
-}
-[data-theme="light"] .logo-item { color: rgba(95,119,114,0.55); }
-[data-theme="light"] .logo-item:hover { color: rgba(95,119,114,0.85); }
 
 /* ── Section tags ── */
 [data-theme="light"] .section-tag {
@@ -224,18 +217,6 @@ svg *,
 [data-theme="light"] .step-card p  { color: var(--text-sub); }
 [data-theme="light"] .step-connector::before { opacity: 0.5; }
 
-/* ── Stats band ── */
-[data-theme="light"] .stats-band {
-  background: linear-gradient(135deg, rgba(42,157,143,0.06) 0%, rgba(31,122,112,0.04) 100%);
-  border-color: var(--border);
-}
-[data-theme="light"] .stat-number {
-  background: linear-gradient(135deg, #2A9D8F, #1F7A70);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-[data-theme="light"] .stat-label { color: var(--text-sub); }
 
 /* ── Pricing ── */
 [data-theme="light"] .pricing-card {
@@ -509,7 +490,7 @@ svg *,
   border-right-color: var(--border);
 }
 [data-theme="light"] .sidebar-header { border-bottom-color: var(--border); }
-[data-theme="light"] .sidebar-logo-text { color: #173B36; }
+[data-theme="light"] .sidebar-logo-text { color: #1a1a2e; }
 [data-theme="light"] .sidebar-section-label { color: var(--text-sub); }
 [data-theme="light"] .app-nav-item { color: var(--text-sub); }
 [data-theme="light"] .app-nav-item:hover { background: rgba(42,157,143,0.08); color: #173B36; }
@@ -759,10 +740,6 @@ svg *,
   border-color: rgba(42,157,143,0.35);
 }
 
-/* ── Logo — sea-green gradient in light mode ── */
-[data-theme="light"] .logo-bg {
-  fill: url(#fsLogoLight);
-}
 
 /* ============================================================
    THEME TOGGLE BUTTON — shared across all pages

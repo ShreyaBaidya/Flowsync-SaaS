@@ -1,5 +1,5 @@
 /* ============================================================
-   TASKLUNE — API Client Module
+   CoTaskio — API Client Module
    Reusable fetch wrapper with automatic JWT token handling.
    ============================================================ */
 
@@ -28,7 +28,7 @@ const ApiClient = (function () {
     };
 
     // Automatically attach Authorization header if token exists
-    const user = FlowsyncAuth.getUser();
+    const user = CoTaskioAuth.getUser();
     if (user && user.token) {
       headers['Authorization'] = `Bearer ${user.token}`;
     }
@@ -65,8 +65,8 @@ const ApiClient = (function () {
         if (response.status === 401) {
           const onAuthPage = /signin\.html|signup\.html/.test(window.location.pathname);
           if (!onAuthPage) {
-            if (typeof FlowsyncAuth !== 'undefined') {
-              FlowsyncAuth.signOut();
+            if (typeof CoTaskioAuth !== 'undefined') {
+              CoTaskioAuth.signOut();
             }
             window.location.replace('signin.html');
           }
